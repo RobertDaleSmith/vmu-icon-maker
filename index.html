@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMU Icon Maker</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        #open-area {
+            margin-bottom: 16px;
+        }
+        #color-area, #mono-area {
+            display: inline-flex;
+            flex-direction: column;
+            margin-bottom: 16px;
+        }
+        #palette-area {
+            display: flex;
+            flex-direction: row;
+            margin-top: 10px;
+        }
+        #color-indicators {
+            display: flex;
+            position: relative;
+            margin: 6px 18px;
+            height: 32px;
+            width: 32px;
+        }
+        .color-indicator {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #000;
+        }
+        #primary-color-indicator {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+        }
+        #secondary-color-indicator {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+        }
+        #color-file, #vms-file, #save-button, #mono-file {
+            display: none; /* Hide the default file input and button */
+        }
+        .custom-file-upload, .custom-save-button {
+            display: inline-block;
+            padding: 6px 12px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            border: 1px solid #007bff;
+            text-align: center;
+        }
+        .custom-file-upload:hover, .custom-save-button:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .image-file-upload {
+            display: inline-block;
+            padding: 2px 8px;
+            cursor: pointer;
+            background-color: white;
+            color: #007bff;
+            border-radius: 4px;
+            border: 1px dashed #007bff;
+            text-align: center;
+            margin-bottom: 2px;
+            margin-right: 2px;
+        }
+        .image-file-upload:active {
+            background-color: #cfe6ff;
+            border-color: #0056b3;
+        }
+        .inline-container {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Space between header and button */
+
+            h3 {
+                flex: 1;
+                margin: 0;
+                text-align: left;
+            }
+        }
+        input#description {
+            margin-top: 8px;
+            line-height: 32px;
+            border: 1px solid #000;
+            border-radius: 2px;
+        }
+  </style>
+</head>
+<body>
+    <div id="open-area">
+        <h1>VMU Icon Maker</h1>
+        <!-- <input type="file" id="vmi-file" accept=".vmi"> -->
+        <label for="vms-file" class="custom-file-upload">Import VMS</label>
+        <input type="file" id="vms-file" accept=".vms" style="display: none;">
+    </div>
+    <div id="color-area">
+        <div class="inline-container">
+            <h3>Color</h3>
+            <label for="color-file" class="image-file-upload">+</label>
+            <input type="file" id="color-file" accept=".bmp, .png, .jpeg, .jpg, .gif, .webp">
+        </div>
+        <canvas id="color-canvas" width="32" height="32" style="border: 1px solid #000;"></canvas>
+        <div id="palette-area">
+            <div id="color-indicators">
+                <div id="secondary-color-indicator" class="color-indicator"></div>
+                <div id="primary-color-indicator" class="color-indicator"></div>
+            </div>
+            <div id="color-palette"></div>
+        </div>
+    </div>
+    <div id="mono-area">
+        <div class="inline-container">
+            <h3>Mono</h3>
+            <label for="mono-file" class="image-file-upload">+</label>
+            <input type="file" id="mono-file" accept=".bmp, .png, .jpeg, .jpg, .gif, .webp">
+        </div>
+        <canvas id="mono-canvas" width="32" height="32" style="border: 1px solid #000;"></canvas>
+    </div>
+    
+    <div id="generate-area">
+        <label for="description">Description</label>
+        <input type="text" id="description" maxlength="16" placeholder="Description">
+        <br><br>
+        <label for="save-button" class="custom-save-button">Generate</label>
+        <button id="save-button" onclick="saveVMSVMI()">Save</button>
+    </div>
+    <div id="description-area">
+        <!-- <h3>Descriptions</h3> -->
+        <p><span id="menu-description"></span></p>
+        <p><span id="boot-rom-description"></span></p>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
