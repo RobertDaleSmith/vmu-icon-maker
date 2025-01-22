@@ -21,8 +21,6 @@ document.getElementById('mono-file').addEventListener('change', function(event) 
   handleFile(event, 'mono');
 });
 
-document.getElementById('description').addEventListener('input', updateSaveButtonState);
-
 document.getElementById('vms-file').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (file) {
@@ -105,7 +103,6 @@ function processColorImage(img) {
   applyPaletteToCanvas(storedPaletteIndices, quantizedColors);
 
   displayColorPalette(quantizedColors);
-  updateSaveButtonState();
 }
 
 function applyPaletteToCanvas(paletteIndices, palette) {
@@ -293,22 +290,11 @@ function processMonoImage(img) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
     ctx.drawImage(hiddenCanvas, 0, 0, canvas.width, canvas.height);
-
-    // Update the save button state
-    updateSaveButtonState();
-}
-
-function updateSaveButtonState() {
-  const description = document.getElementById('description').value;
-  const saveButton = document.getElementById('save-button');
-  // Add logic to enable/disable save button based on conditions
-  const otherConditions = true; // Replace with actual conditions
-  saveButton.disabled = !(description && otherConditions);
 }
 
 function saveVMSVMI() {
     // Retrieve the description value
-    const description = document.getElementById('description').value;
+    const description = document.getElementById('description').value || 'ICONDATA_VMS';
 
     // Create VMI and VMS data
     const vmiData = createVMIData();
