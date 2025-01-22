@@ -1,6 +1,11 @@
+const scaleFactor = 8; // Scale factor for enlarging each pixel
+
 // Global variable to store palette indices
 let storedPaletteIndices = new Array(32 * 32).fill(1);
-const scaleFactor = 8; // Scale factor for enlarging each pixel
+let monoPixelStates = new Array(32 * 32).fill(false); // Initialize all pixels to "off" (white)
+
+// Global variable to store the current palette
+let currentPalette = [];
 
 // Global variables for color selection
 let primaryColor = '#000000FF'; // Default primary color
@@ -72,23 +77,34 @@ function processColorImage(img) {
   // Reduce the color palette to 16 colors
   let reducedPalette = reducePalette(colors, hasTransparent ? 15 : 16);
 
+  // Quantize colors to 4 bits per channel
+  const quantizedColors = reducedPalette.map(color => ({
+    r: Math.round((color.r / 255) * 15) * 17,
+    g: Math.round((color.g / 255) * 15) * 17,
+    b: Math.round((color.b / 255) * 15) * 17,
+    a: color.a // Keep alpha as is
+  }));
+
   // If transparent color was present, add it to the end of the palette
   if (hasTransparent) {
-    reducedPalette.push(transparentColor);
+    quantizedColors.push(transparentColor);
   }
 
   // Ensure the palette has at least 16 colors
-  while (reducedPalette.length < 16) {
-    reducedPalette.push(transparentColor);
+  while (quantizedColors.length < 16) {
+    quantizedColors.push(transparentColor);
   }
 
   // Update the palette indices for each pixel
-  storedPaletteIndices = updatePaletteIndices(imageData, reducedPalette, transparentColor);
+  storedPaletteIndices = updatePaletteIndices(imageData, quantizedColors, transparentColor);
+
+  // Store the current palette
+  currentPalette = quantizedColors;
 
   // Apply the reduced palette and palette indices to the visible canvas
-  applyPaletteToCanvas(storedPaletteIndices, reducedPalette);
+  applyPaletteToCanvas(storedPaletteIndices, quantizedColors);
 
-  displayColorPalette(reducedPalette);
+  displayColorPalette(quantizedColors);
   updateSaveButtonState();
 }
 
@@ -242,6 +258,7 @@ function processMonoImage(img) {
     const threshold = 64; // Adjust this value as needed
 
     // Process each pixel
+    monoPixelStates = []; // Reset monoPixelStates
     for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
@@ -253,12 +270,14 @@ function processMonoImage(img) {
         if (brightness > threshold) {
             // Set pixel to transparent
             data[i + 3] = 0; // Alpha channel
+            monoPixelStates.push(false);
         } else {
             // Set pixel to black
             data[i] = 0;     // Red channel
             data[i + 1] = 0; // Green channel
             data[i + 2] = 0; // Blue channel
             data[i + 3] = 255; // Alpha channel
+            monoPixelStates.push(true);
         }
     }
 
@@ -288,16 +307,12 @@ function updateSaveButtonState() {
 }
 
 function saveVMSVMI() {
-    // Get the original 32x32 image data
-    const colorImageData = getOriginalImageData('color-canvas');
-    const monoImageData = getOriginalImageData('mono-canvas');
-
     // Retrieve the description value
     const description = document.getElementById('description').value;
 
     // Create VMI and VMS data
     const vmiData = createVMIData();
-    const vmsData = createVMSData(description, monoImageData, colorImageData);
+    const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
 
     // Save VMI file
     saveFile(vmiData, 'ICONDATA.VMI');
@@ -326,7 +341,7 @@ function createVMIData() {
   return vmiData;
 }
 
-function createVMSData(description, monoImageData, colorImageData) {
+function createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette) {
     const vmsData = new Uint8Array(1024);
 
     // 0x00, 16 bytes: Description
@@ -337,15 +352,15 @@ function createVMSData(description, monoImageData, colorImageData) {
     vmsData.set([0x20, 0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 16);
 
     // 0x20, 128 bytes: Mono bitmap data
-    const monoBitmapBytes = convertToMonoBitmap(monoImageData);
+    const monoBitmapBytes = convertMonoPixelStatesToBitmap(monoPixelStates);
     vmsData.set(monoBitmapBytes, 32);
 
     // 0xA0, 32 bytes: Color palette
-    const colorPaletteBytes = extractColorPalette(colorImageData);
+    const colorPaletteBytes = convertPaletteToBytes(currentPalette);
     vmsData.set(colorPaletteBytes, 160);
 
     // 0xC0, 512 bytes: Color bitmap data
-    const colorBitmapBytes = convertToColorBitmap(colorImageData, colorPaletteBytes);
+    const colorBitmapBytes = convertPaletteIndicesToBitmap(storedPaletteIndices);
     vmsData.set(colorBitmapBytes, 192);
 
     // 0x2C0, 320 bytes: Fixed values
@@ -354,40 +369,36 @@ function createVMSData(description, monoImageData, colorImageData) {
     return vmsData;
 }
 
-function convertToMonoBitmap(imageData) {
-  const bitmap = [];
-  for (let i = 0; i < imageData.data.length; i += 4) {
-      const brightness = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
-      bitmap.push(brightness > 127 ? 0 : 1);
-  }
-  const bytes = [];
-  for (let i = 0; i < bitmap.length; i += 8) {
-      const byte = bitmap.slice(i, i + 8).reduce((acc, bit, index) => acc | (bit << (7 - index)), 0);
-      bytes.push(byte);
-  }
-  return new Uint8Array(bytes.slice(0, 128));
+function convertMonoPixelStatesToBitmap(monoPixelStates) {
+    const bytes = [];
+    for (let i = 0; i < monoPixelStates.length; i += 8) {
+        const byte = monoPixelStates.slice(i, i + 8).reduce((acc, bit, index) => acc | (bit ? 1 : 0) << (7 - index), 0);
+        bytes.push(byte);
+    }
+    return new Uint8Array(bytes.slice(0, 128));
 }
 
-function extractColorPalette(imageData) {
-    const colors = new Map();
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        const color = (imageData.data[i] << 16) | (imageData.data[i + 1] << 8) | imageData.data[i + 2];
-        if (!colors.has(color)) {
-            colors.set(color, colors.size);
-        }
-    }
-    const palette = [];
-    colors.forEach((index, color) => {
-        const r = (color >> 16) & 0xFF;
-        const g = (color >> 8) & 0xFF;
-        const b = color & 0xFF;
-        const a = 0xF0; // Assuming full opacity for all colors
-        palette.push((g & 0xF0) | ((b & 0xF0) >> 4), (a & 0xF0) | ((r & 0xF0) >> 4));
+function convertPaletteToBytes(palette) {
+    const bytes = [];
+    palette.forEach(color => {
+        // Convert each color channel to 4 bits (0-15) and pack them into bytes
+        const g = ((color.g >> 4) & 0xF) << 4 | ((color.b >> 4) & 0xF);
+        const a = ((color.a >> 4) & 0xF) << 4 | ((color.r >> 4) & 0xF);
+        bytes.push(g, a);
     });
-    while (palette.length < 32) {
-        palette.push(0x00);
+    while (bytes.length < 32) {
+        bytes.push(0x00);
     }
-    return new Uint8Array(palette.slice(0, 32));
+    return new Uint8Array(bytes.slice(0, 32));
+}
+
+function convertPaletteIndicesToBitmap(paletteIndices) {
+    const bytes = [];
+    for (let i = 0; i < paletteIndices.length; i += 2) {
+        const byte = (paletteIndices[i] << 4) | (paletteIndices[i + 1] || 0);
+        bytes.push(byte);
+    }
+    return new Uint8Array(bytes.slice(0, 512));
 }
 
 function getColorIndex(r, g, b, palette) {
@@ -536,6 +547,9 @@ function parseIconData(data, offset) {
         const monoBitmapData = data.slice(monoBitmapOffset, monoBitmapOffset + monoBitmapSize);
         const monoImageData = convertMonoBitmapToImageData(monoBitmapData);
         drawImageDataToCanvas(monoImageData, 'mono-canvas');
+
+        // Update monoPixelStates
+        updateMonoPixelStates(monoBitmapData);
     } else {
         console.error('File is too short to contain monochrome icon data');
     }
@@ -807,6 +821,9 @@ function displayColorPalette(palette) {
     primaryColor = rgbaToHex(palette[primaryColorIndex].r, palette[primaryColorIndex].g, palette[primaryColorIndex].b, palette[primaryColorIndex].a);
     secondaryColor = rgbaToHex(palette[secondaryColorIndex].r, palette[secondaryColorIndex].g, palette[secondaryColorIndex].b, palette[secondaryColorIndex].a);
     updateColorIndicators();
+
+    // Store the current palette
+    currentPalette = palette;
 }
 
 function updateColorIndicators() {
@@ -815,8 +832,6 @@ function updateColorIndicators() {
     primaryIndicator.style.backgroundColor = hexToRgbaString(primaryColor);
     secondaryIndicator.style.backgroundColor = hexToRgbaString(secondaryColor);
 }
-
-let monoPixelStates = new Array(32 * 32).fill(false); // Initialize all pixels to "off" (white)
 
 function setupCanvas(canvasId) {
     const canvas = document.getElementById(canvasId);
@@ -1083,3 +1098,14 @@ document.getElementById('color-indicators').addEventListener('click', function()
     // Update the color indicators to reflect the change
     updateColorIndicators();
 });
+
+function updateMonoPixelStates(monoBitmapData) {
+    monoPixelStates = [];
+    for (let i = 0; i < monoBitmapData.length; i++) {
+        const byte = monoBitmapData[i];
+        for (let bit = 0; bit < 8; bit++) {
+            const isBlack = (byte & (1 << (7 - bit))) !== 0;
+            monoPixelStates.push(isBlack);
+        }
+    }
+}
