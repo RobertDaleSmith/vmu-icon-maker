@@ -54,6 +54,427 @@ function handleFile(event, type) {
   reader.readAsDataURL(file);
 }
 
+let redInput = document.getElementById('red');
+let greenInput = document.getElementById('green');
+let blueInput = document.getElementById('blue');
+let alphaInput = document.getElementById('alpha');
+
+const colorPreview = document.getElementById('color-preview');
+const customColorPicker = document.getElementById('custom-color-picker');
+
+let currentPaletteIndex = null;
+let lastRightClickTime = 0;
+const doubleClickThreshold = 200; // Reduced time in milliseconds
+
+const hueSlider = document.getElementById('hue-slider');
+const colorPickerCanvas = document.getElementById('color-picker-canvas');
+const hueCtx = hueSlider.getContext('2d', { willReadFrequently: true });
+const colorCtx = colorPickerCanvas.getContext('2d', { willReadFrequently: true });
+let currentHue = 0;
+let isColorPickerDragging = false;
+let isHueSliderDragging = false;
+let colorIndicatorX = colorPickerCanvas.width - 1; // Default to the furthest right position
+let colorIndicatorY = 0; // Default to the top position
+
+// Add a variable to track the hue indicator position
+let hueIndicatorX = 0;
+
+function rgbaToHex(r, g, b, a) {
+    const hexR = (r & 0xFF).toString(16).padStart(2, '0');
+    const hexG = (g & 0xFF).toString(16).padStart(2, '0');
+    const hexB = (b & 0xFF).toString(16).padStart(2, '0');
+    const hexA = (a & 0xFF).toString(16).padStart(2, '0');
+    return `#${hexR}${hexG}${hexB}${hexA}`.toUpperCase();
+}
+
+// Convert HSB to RGB
+function hsbToRgb(h, s, v) {
+    let r, g, b;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+
+    return [r * 255, g * 255, b * 255];
+}
+
+// Update the drawHueSlider function to draw the indicator
+function drawHueSlider() {
+    const width = hueSlider.width;
+    const gradient = hueCtx.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(0, 'red');
+    gradient.addColorStop(0.17, 'yellow');
+    gradient.addColorStop(0.34, 'lime');
+    gradient.addColorStop(0.51, 'cyan');
+    gradient.addColorStop(0.68, 'blue');
+    gradient.addColorStop(0.85, 'magenta');
+    gradient.addColorStop(1, 'red');
+
+    hueCtx.fillStyle = gradient;
+    hueCtx.fillRect(0, 0, width, hueSlider.height);
+
+    // Calculate the color for the current hue
+    const [r, g, b] = hsbToRgb(hueIndicatorX / width, 1, 1);
+
+    // Draw the hue indicator with the selected color
+    hueCtx.beginPath();
+    hueCtx.arc(hueIndicatorX, hueSlider.height / 2, hueSlider.height / 2, 0, Math.PI * 2);
+    hueCtx.fillStyle = `rgb(${r}, ${g}, ${b})`; // Fill with the selected color
+    hueCtx.fill();
+    hueCtx.strokeStyle = 'white'; // Set the stroke color to white
+    hueCtx.lineWidth = 3; // Set the stroke width to 3px
+    hueCtx.stroke();
+}
+
+// Draw the color canvas based on the selected hue
+function drawColorCanvas(hue) {
+    const width = colorPickerCanvas.width;
+    const height = colorPickerCanvas.height;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const saturation = x / width;
+            const brightness = 1 - y / height;
+            const [r, g, b] = hsbToRgb(hue, saturation, brightness);
+
+            // Quantize to 4-bit color depth
+            const quantizedR = Math.round(r / 255 * 15) * 17;
+            const quantizedG = Math.round(g / 255 * 15) * 17;
+            const quantizedB = Math.round(b / 255 * 15) * 17;
+
+            colorCtx.fillStyle = `rgb(${quantizedR}, ${quantizedG}, ${quantizedB})`;
+            colorCtx.fillRect(x, y, 1, 1);
+        }
+    }
+}
+
+// Draw the selection circle
+function drawCircle(x, y) {
+    colorCtx.beginPath();
+    colorCtx.arc(x, y, 6, 0, Math.PI * 2);
+    colorCtx.strokeStyle = 'white';
+    colorCtx.lineWidth = 3;
+    colorCtx.stroke();
+}
+
+function getStoredPaletteIndices() {
+    // Ensure this function returns the correct indices for the current canvas state
+    return storedPaletteIndices; // Make sure this is correctly populated elsewhere in your code
+}
+
+function updateCanvasWithPalette(palette) {
+    // console.log('Updating canvas with new palette');
+    const canvas = document.getElementById('color-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const originalWidth = 32;
+    const originalHeight = 32;
+    const imageData = ctx.createImageData(originalWidth, originalHeight);
+    const data = imageData.data;
+
+    // Assuming you have a stored array of palette indices for each pixel
+    const paletteIndices = getStoredPaletteIndices(); // Implement this function to retrieve stored indices
+
+    for (let i = 0; i < paletteIndices.length; i++) {
+        const index = paletteIndices[i]; // Get the palette index for this pixel
+
+        // Check if the index is valid
+        if (index >= 0 && index < palette.length) {
+            const color = palette[index]; // Get the new color from the updated palette
+
+            if (color) {
+                const pixelIndex = i * 4;
+                data[pixelIndex] = color.r;
+                data[pixelIndex + 1] = color.g;
+                data[pixelIndex + 2] = color.b;
+                data[pixelIndex + 3] = color.a; // Ensure alpha is also updated
+            }
+        }
+    }
+
+    // Draw the updated 32x32 image data onto the canvas
+    ctx.putImageData(imageData, 0, 0);
+
+    // Scale the 32x32 image data to the full canvas size
+    const scaledImageData = ctx.createImageData(canvas.width, canvas.height);
+    for (let y = 0; y < originalHeight; y++) {
+        for (let x = 0; x < originalWidth; x++) {
+            const originalIndex = (y * originalWidth + x) * 4;
+            for (let dy = 0; dy < scaleFactor; dy++) {
+                for (let dx = 0; dx < scaleFactor; dx++) {
+                    const scaledIndex = ((y * scaleFactor + dy) * canvas.width + (x * scaleFactor + dx)) * 4;
+                    scaledImageData.data[scaledIndex] = data[originalIndex];
+                    scaledImageData.data[scaledIndex + 1] = data[originalIndex + 1];
+                    scaledImageData.data[scaledIndex + 2] = data[originalIndex + 2];
+                    scaledImageData.data[scaledIndex + 3] = data[originalIndex + 3];
+                }
+            }
+        }
+    }
+
+    ctx.putImageData(scaledImageData, 0, 0);
+    // console.log('Canvas updated with new palette');
+}
+
+function resetColorPickerIndicators(r, g, b) {
+    const [hue, saturation, brightness] = rgbToHsb(r, g, b);
+
+    // Update the hue indicator position
+    hueIndicatorX = hue * hueSlider.width;
+    currentHue = hue;
+    drawHueSlider();
+
+    // Update the color indicator positions
+    colorIndicatorX = Math.max(0, Math.min(saturation * colorPickerCanvas.width, colorPickerCanvas.width - 1));
+    colorIndicatorY = Math.max(0, Math.min((1 - brightness) * colorPickerCanvas.height, colorPickerCanvas.height - 1));
+
+    drawColorCanvas(currentHue);
+    drawCircle(colorIndicatorX, colorIndicatorY);
+}
+
+function updateColorPreview(event) {
+    const r = parseInt(redInput.value) * 17; // Scale 4-bit to 8-bit
+    const g = parseInt(greenInput.value) * 17;
+    const b = parseInt(blueInput.value) * 17;
+    const a = parseInt(alphaInput.value) * 17; // Scale 4-bit to 8-bit
+
+    colorPreview.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+
+    // Apply the color change immediately
+    if (currentPaletteIndex !== null) {
+        currentPalette[currentPaletteIndex] = { r, g, b, a };
+        updateCanvasWithPalette(currentPalette);
+        displayColorPalette(currentPalette);
+
+        // Update primary or secondary color if necessary
+        if (currentPaletteIndex === primaryColorIndex) {
+            primaryColor = rgbaToHex(r, g, b, a);
+            updateColorIndicators();
+        }
+        if (currentPaletteIndex === secondaryColorIndex) {
+            secondaryColor = rgbaToHex(r, g, b, a);
+            updateColorIndicators();
+        }
+
+        // Reset the color-picker-canvas and hue slider indicators 
+        // only if the color is changed by color form inputs.
+        if (event) resetColorPickerIndicators(r, g, b);
+    }
+}
+
+function showColorPicker(index, event) {
+    console.log(`Opening color picker for index: ${index}`);
+    currentPaletteIndex = index;
+    const color = currentPalette[index];
+
+    // Convert the current color to HSB
+    const [hue, saturation, brightness] = rgbToHsb(color.r, color.g, color.b);
+
+    // Update the hue indicator position
+    hueIndicatorX = hue * hueSlider.width;
+    currentHue = hue;
+    drawHueSlider();
+
+    // Update the color indicator positions
+    colorIndicatorX = Math.max(0, Math.min(saturation * colorPickerCanvas.width, colorPickerCanvas.width - 1));
+    colorIndicatorY = Math.max(0, Math.min((1 - brightness) * colorPickerCanvas.height, colorPickerCanvas.height - 1));
+
+    drawColorCanvas(currentHue);
+    drawCircle(colorIndicatorX, colorIndicatorY);
+
+    // Update the color preview and inputs
+    redInput.value = color.r / 17;
+    greenInput.value = color.g / 17;
+    blueInput.value = color.b / 17;
+    alphaInput.value = color.a / 17;
+    updateColorPreview();
+
+    // Position the color picker
+    const rect = document.getElementById('color-palette-item-index-' + index).getBoundingClientRect();
+    const topPosition = rect.bottom;
+    const leftPosition = rect.left;
+
+    if (customColorPicker) {
+        customColorPicker.style.position = 'fixed';
+        customColorPicker.style.top = `${topPosition}px`;
+        customColorPicker.style.left = `${leftPosition}px`;
+        customColorPicker.style.display = 'block';
+    } else {
+        console.error('customColorPicker element not found');
+    }
+}
+
+function hexToRgba(hex) {
+    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    return match ? { r: parseInt(match[1], 16), g: parseInt(match[2], 16), b: parseInt(match[3], 16), a: parseInt(match[4], 16) } : null;
+}
+
+function hexToRgbaString(hex) {
+    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    return match ? `rgba(${parseInt(match[1], 16)}, ${parseInt(match[2], 16)}, ${parseInt(match[3], 16)}, ${parseInt(match[4], 16) / 255})` : null;
+}
+
+function updateColorIndicators() {
+    const primaryIndicator = document.getElementById('primary-color-indicator');
+    const secondaryIndicator = document.getElementById('secondary-color-indicator');
+    primaryIndicator.style.backgroundColor = hexToRgbaString(primaryColor);
+    secondaryIndicator.style.backgroundColor = hexToRgbaString(secondaryColor);
+}
+
+// Add events to each color in the palette
+function attachPaletteEvents() {
+    document.querySelectorAll('#color-palette div').forEach((colorDiv, index) => {
+        colorDiv.addEventListener('dblclick', (e) => {
+            e.preventDefault(); // Prevent the native color picker
+            showColorPicker(index, e); // Pass the event object
+        });
+
+        // Single click to set primary color
+        colorDiv.addEventListener('click', (e) => {
+            if (e.button === 0) { // Left click
+                primaryColor = rgbaToHex(currentPalette[index].r, currentPalette[index].g, currentPalette[index].b, currentPalette[index].a);
+                primaryColorIndex = index;
+                updateColorIndicators();
+            }
+        });
+
+        // Handle right-click for secondary color and double right-click for picker
+        colorDiv.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const currentTime = new Date().getTime();
+
+            if (currentTime - lastRightClickTime < doubleClickThreshold) {
+                showColorPicker(index, e); // Open picker on double right-click
+            } else {
+                secondaryColor = rgbaToHex(currentPalette[index].r, currentPalette[index].g, currentPalette[index].b, currentPalette[index].a);
+                secondaryColorIndex = index;
+                updateColorIndicators();
+            }
+
+            lastRightClickTime = currentTime;
+        });
+    });
+}
+
+function displayColorPalette(palette) {
+    const paletteContainer = document.getElementById('color-palette');
+    paletteContainer.innerHTML = ''; // Clear previous palette
+
+    const squareSize = 20; // Size of each color square
+    const columns = 8; // Number of columns in the grid
+    const gap = '0 2'; // Gap between squares
+
+    // Calculate the total width of the palette container
+    const totalWidth = columns * (squareSize + gap) - gap; // Subtract the last gap
+
+    // Set the palette container to display as a grid
+    paletteContainer.style.display = 'grid';
+    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize}px)`;
+    paletteContainer.style.gap = `${gap}px`;
+    paletteContainer.style.width = `${totalWidth}px`; // Set the calculated width
+
+    palette.forEach((color, index) => {
+        const colorDiv = document.createElement('div');
+        colorDiv.style.width = `${squareSize}px`;
+        colorDiv.style.height = `${squareSize}px`;
+        colorDiv.style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+        colorDiv.style.cursor = 'pointer';
+        colorDiv.style.border = '1px solid #ccc'; // Optional: Add a border for better visibility
+        colorDiv.style.position = 'relative'; // Position relative to allow absolute positioning of the input
+        colorDiv.id = 'color-palette-item-index-' + index;
+
+        // Create a color input element
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = rgbaToHex(color.r, color.g, color.b, color.a).slice(0, 7); // Use only RGB for the color input
+        colorInput.style.position = 'absolute';
+        colorInput.style.top = '0';
+        colorInput.style.left = '0';
+        colorInput.style.width = '100%';
+        colorInput.style.height = '100%';
+        colorInput.style.opacity = '0'; // Hide the input visually but keep it accessible
+        colorInput.style.pointerEvents = 'none'; // Disable pointer events to prevent single click
+
+        // Store the alpha value as a data attribute
+        colorInput.setAttribute('data-alpha', (color.a & 0xFF).toString(16).padStart(2, '0'));
+
+        // Single click to set primary color
+        colorDiv.addEventListener('click', (e) => {
+            if (e.button === 0) { // Left click
+                const alphaHex = colorInput.getAttribute('data-alpha');
+                primaryColor = colorInput.value + alphaHex; // Append the alpha value
+                primaryColorIndex = index;
+                updateColorIndicators();
+            }
+        });
+
+        // Right click to set secondary color
+        colorDiv.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const alphaHex = colorInput.getAttribute('data-alpha');
+            secondaryColor = colorInput.value + alphaHex; // Append the alpha value
+            secondaryColorIndex = index;
+            updateColorIndicators();
+        });
+
+        // Add change event to update color
+        colorInput.addEventListener('input', () => {
+            const newColor = colorInput.value + 'FF'; // Append full opacity
+            const rgba = hexToRgba(newColor);
+            if (rgba) {
+                console.log(`Updating color index ${index} to`, rgba);
+                color.r = rgba.r;
+                color.g = rgba.g;
+                color.b = rgba.b;
+                color.a = rgba.a;
+                colorDiv.style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+
+                // Update the canvas with the new palette
+                updateCanvasWithPalette(currentPalette);
+
+                // Update the color indicators if this color is selected
+                if (index === primaryColorIndex) {
+                    primaryColor = newColor;
+                    updateColorIndicators();
+                }
+                if (index === secondaryColorIndex) {
+                    secondaryColor = newColor;
+                    updateColorIndicators();
+                }
+            }
+        });
+
+        colorDiv.appendChild(colorInput);
+        paletteContainer.appendChild(colorDiv);
+    });
+
+    // Update color indicators based on the new palette
+    if (primaryColorIndex >= palette.length) {
+        primaryColorIndex = 0; // Reset to first color if out of bounds
+    }
+    if (secondaryColorIndex >= palette.length) {
+        secondaryColorIndex = 1; // Reset to second color if out of bounds
+    }
+
+    primaryColor = rgbaToHex(palette[primaryColorIndex].r, palette[primaryColorIndex].g, palette[primaryColorIndex].b, palette[primaryColorIndex].a);
+    secondaryColor = rgbaToHex(palette[secondaryColorIndex].r, palette[secondaryColorIndex].g, palette[secondaryColorIndex].b, palette[secondaryColorIndex].a);
+    updateColorIndicators();
+
+    // Store the current palette
+    currentPalette = palette;
+
+    attachPaletteEvents();
+}
+
 function processColorImage(img) {
   // Create an invisible 32x32 canvas
   const hiddenCanvas = document.createElement('canvas');
@@ -94,7 +515,7 @@ function processColorImage(img) {
   }
 
   // Update the palette indices for each pixel
-  storedPaletteIndices = updatePaletteIndices(imageData, quantizedColors, transparentColor);
+  storedPaletteIndices = updatePaletteIndices(imageData, quantizedColors);
 
   // Store the current palette
   currentPalette = quantizedColors;
@@ -107,11 +528,13 @@ function processColorImage(img) {
 
 function applyPaletteToCanvas(paletteIndices, palette) {
   const canvas = document.getElementById('color-canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const imageData = ctx.createImageData(32, 32);
 
   for (let i = 0; i < paletteIndices.length; i++) {
     const color = palette[paletteIndices[i]];
+    if (!color) continue;
+
     const index = i * 4;
     imageData.data[index] = color.r;
     imageData.data[index + 1] = color.g;
@@ -202,7 +625,7 @@ function averageColor(color1, color2) {
   };
 }
 
-function updatePaletteIndices(imageData, palette, transparentColor) {
+function updatePaletteIndices(imageData, palette) {
   const indices = [];
   const transparentIndex = palette.findIndex(color => color.a === 0);
 
@@ -213,7 +636,7 @@ function updatePaletteIndices(imageData, palette, transparentColor) {
     const a = imageData.data[i + 3];
 
     if (a === 0) {
-      // Assign the transparent index if the pixel is transparent
+      // Assign the transparent index if the pixel is fully transparent
       indices.push(transparentIndex);
     } else {
       // Find the closest palette index for non-transparent pixels
@@ -228,10 +651,13 @@ function findClosestPaletteIndex(r, g, b, palette) {
   let closestIndex = 0;
   let minDistance = Infinity;
   palette.forEach((color, index) => {
-    const distance = colorDistance({ r, g, b }, color);
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestIndex = index;
+    // Only compare non-transparent colors
+    if (color.a !== 0) {
+      const distance = colorDistance({ r, g, b }, color);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = index;
+      }
     }
   });
   return closestIndex;
@@ -504,6 +930,17 @@ function parseBootRomDescription(data) {
     document.getElementById('boot-rom-description').textContent = bootRomDescription;
 }
 
+function updateMonoPixelStates(monoBitmapData) {
+    monoPixelStates = [];
+    for (let i = 0; i < monoBitmapData.length; i++) {
+        const byte = monoBitmapData[i];
+        for (let bit = 0; bit < 8; bit++) {
+            const isBlack = (byte & (1 << (7 - bit))) !== 0;
+            monoPixelStates.push(isBlack);
+        }
+    }
+}
+
 function parseIconData(data, offset) {
     const paletteOffset = offset;
     const bitmapOffset = offset + 32;
@@ -600,7 +1037,7 @@ function drawImageDataToCanvas(imageData, canvasId) {
     const scaledImageData = ctx.createImageData(scaledWidth, scaledHeight);
 
     // Define the default color (white) for uncolored pixels
-    // const defaultColor = { r: 255, g: 255, b: 255, a: 255 };
+    const defaultColor = { r: 255, g: 255, b: 255, a: 255 };
 
     // Scale each pixel
     for (let y = 0; y < imageData.height; y++) {
@@ -612,12 +1049,12 @@ function drawImageDataToCanvas(imageData, canvasId) {
             let a = imageData.data[index + 3];
 
             // If the alpha is 0, use the default color
-            // if (a === 0) {
-            //     r = defaultColor.r;
-            //     g = defaultColor.g;
-            //     b = defaultColor.b;
-            //     a = defaultColor.a;
-            // }
+            if (a === 0) {
+                r = defaultColor.r;
+                g = defaultColor.g;
+                b = defaultColor.b;
+                a = defaultColor.a;
+            }
 
             // Draw the scaled pixel
             for (let dy = 0; dy < scaleFactor; dy++) {
@@ -697,240 +1134,126 @@ function convertMonoBitmapToImageData(bitmapBytes) {
     return imageData;
 }
 
-function displayColorPalette(palette) {
-    const paletteContainer = document.getElementById('color-palette');
-    paletteContainer.innerHTML = ''; // Clear previous palette
-
-    const squareSize = 20; // Size of each color square
-    const columns = 8; // Number of columns in the grid
-    const gap = '0 2'; // Gap between squares
-
-    // Calculate the total width of the palette container
-    const totalWidth = columns * (squareSize + gap) - gap; // Subtract the last gap
-
-    // Set the palette container to display as a grid
-    paletteContainer.style.display = 'grid';
-    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize}px)`;
-    paletteContainer.style.gap = `${gap}px`;
-    paletteContainer.style.width = `${totalWidth}px`; // Set the calculated width
-
-    palette.forEach((color, index) => {
-        const colorDiv = document.createElement('div');
-        colorDiv.style.width = `${squareSize}px`;
-        colorDiv.style.height = `${squareSize}px`;
-        colorDiv.style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
-        colorDiv.style.cursor = 'pointer';
-        colorDiv.style.border = '1px solid #ccc'; // Optional: Add a border for better visibility
-        colorDiv.style.position = 'relative'; // Position relative to allow absolute positioning of the input
-
-        // Create a color input element
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = rgbaToHex(color.r, color.g, color.b, color.a).slice(0, 7); // Use only RGB for the color input
-        colorInput.style.position = 'absolute';
-        colorInput.style.top = '0';
-        colorInput.style.left = '0';
-        colorInput.style.width = '100%';
-        colorInput.style.height = '100%';
-        colorInput.style.opacity = '0'; // Hide the input visually but keep it accessible
-        colorInput.style.pointerEvents = 'none'; // Disable pointer events to prevent single click
-
-        // Store the alpha value as a data attribute
-        colorInput.setAttribute('data-alpha', (color.a & 0xFF).toString(16).padStart(2, '0'));
-
-        // Single click to set primary color
-        colorDiv.addEventListener('click', (e) => {
-            if (e.button === 0) { // Left click
-                const alphaHex = colorInput.getAttribute('data-alpha');
-                primaryColor = colorInput.value + alphaHex; // Append the alpha value
-                console.log(primaryColor);
-                primaryColorIndex = index;
-                updateColorIndicators();
-            }
-        });
-
-        // Right click to set secondary color
-        colorDiv.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const alphaHex = colorInput.getAttribute('data-alpha');
-            secondaryColor = colorInput.value + alphaHex; // Append the alpha value
-            secondaryColorIndex = index;
-            updateColorIndicators();
-        });
-
-        // Double click to open color picker
-        colorDiv.addEventListener('dblclick', (e) => {
-            e.preventDefault(); // Prevent any default action
-            colorInput.style.pointerEvents = 'auto'; // Enable pointer events for double click
-            colorInput.click();
-            colorInput.style.pointerEvents = 'none'; // Disable again after click
-        });
-
-        // Add change event to update color
-        colorInput.addEventListener('input', () => {
-            const newColor = colorInput.value + 'FF'; // Append full opacity
-            const rgba = hexToRgba(newColor);
-            if (rgba) {
-                console.log(`Updating color index ${index} to`, rgba);
-                color.r = rgba.r;
-                color.g = rgba.g;
-                color.b = rgba.b;
-                color.a = rgba.a;
-                colorDiv.style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
-
-                // Update the canvas with the new palette
-                updateCanvasWithPalette(palette);
-
-                // Update the color indicators if this color is selected
-                if (index === primaryColorIndex) {
-                    primaryColor = newColor;
-                    updateColorIndicators();
-                } else if (index === secondaryColorIndex) {
-                    secondaryColor = newColor;
-                    updateColorIndicators();
-                }
-            }
-        });
-
-        colorDiv.appendChild(colorInput);
-        paletteContainer.appendChild(colorDiv);
-    });
-
-    // Update color indicators based on the new palette
-    if (primaryColorIndex >= palette.length) {
-        primaryColorIndex = 0; // Reset to first color if out of bounds
-    }
-    if (secondaryColorIndex >= palette.length) {
-        secondaryColorIndex = 1; // Reset to second color if out of bounds
-    }
-
-    primaryColor = rgbaToHex(palette[primaryColorIndex].r, palette[primaryColorIndex].g, palette[primaryColorIndex].b, palette[primaryColorIndex].a);
-    secondaryColor = rgbaToHex(palette[secondaryColorIndex].r, palette[secondaryColorIndex].g, palette[secondaryColorIndex].b, palette[secondaryColorIndex].a);
-    updateColorIndicators();
-
-    // Store the current palette
-    currentPalette = palette;
-}
-
-function updateColorIndicators() {
-    const primaryIndicator = document.getElementById('primary-color-indicator');
-    const secondaryIndicator = document.getElementById('secondary-color-indicator');
-    primaryIndicator.style.backgroundColor = hexToRgbaString(primaryColor);
-    secondaryIndicator.style.backgroundColor = hexToRgbaString(secondaryColor);
-}
-
-function setupCanvas(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    const pixelSize = 32; // Original pixel size
-    canvas.width = pixelSize * scaleFactor;
-    canvas.height = pixelSize * scaleFactor;
-    const ctx = canvas.getContext('2d');
-
-    let drawing = false;
-    let currentButton = null;
-
-    canvas.addEventListener('mousedown', (e) => {
-        if (e.button === 0 || e.button === 2) { // Left or right click
-            drawing = true;
-            currentButton = e.button;
-            draw(e);
-        }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        if (drawing) {
-            draw(e);
-        }
-    });
-
-    canvas.addEventListener('mouseup', () => {
-        drawing = false;
-        currentButton = null;
-        ctx.beginPath();
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-        drawing = false;
-        currentButton = null;
-        ctx.beginPath();
-    });
-
-    // Prevent the context menu from appearing on right-click
-    canvas.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-    });
-
-    function draw(e) {
-        const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / scaleFactor);
-        const y = Math.floor((e.clientY - rect.top) / scaleFactor);
-
-        if (canvasId === 'mono-canvas') {
-            // For monochrome canvas, toggle pixel state
-            const index = y * pixelSize + x;
-            const isOn = currentButton === 0; // Left click turns "on" (black), right click clears (transparent)
-            monoPixelStates[index] = isOn;
-
-            if (isOn) {
-                // Draw the pixel in black
-                ctx.fillStyle = 'black';
-                ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-            } else {
-                // Clear the pixel
-                ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-            }
-        } else {
-            // For color canvas, update storedPaletteIndices
-            const color = currentButton === 2 ? secondaryColor : primaryColor;
-            const colorIndex = currentButton === 2 ? secondaryColorIndex : primaryColorIndex;
-
-            // Update the stored palette index for this pixel
-            const index = y * pixelSize + x;
-            storedPaletteIndices[index] = colorIndex;
-
-            // Clear the pixel if the color is fully transparent
-            if (color.endsWith('00')) {
-                ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-            } else {
-                // Draw the scaled pixel
-                ctx.fillStyle = color;
-                ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-            }
-        }
-    }
-}
-
 // Initialize the color indicators and both canvases
 document.addEventListener('DOMContentLoaded', () => {
+    const vmsUploadLabel = document.querySelector('label[for="vms-file"]');
+
+    redInput = document.getElementById('red');
+    greenInput = document.getElementById('green');
+    blueInput = document.getElementById('blue');
+    alphaInput = document.getElementById('alpha');
+
+    function setupCanvas(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const pixelSize = 32; // Original pixel size
+        canvas.width = pixelSize * scaleFactor;
+        canvas.height = pixelSize * scaleFactor;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        let drawing = false;
+        let currentButton = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 || e.button === 2) { // Left or right click
+                drawing = true;
+                currentButton = e.button;
+                draw(e);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawing) {
+                draw(e);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        // Prevent the context menu from appearing on right-click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        function draw(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / scaleFactor);
+            const y = Math.floor((e.clientY - rect.top) / scaleFactor);
+
+            if (canvasId === 'mono-canvas') {
+                // For monochrome canvas, toggle pixel state
+                const index = y * pixelSize + x;
+                const isOn = currentButton === 0; // Left click turns "on" (black), right click clears (transparent)
+                monoPixelStates[index] = isOn;
+
+                if (isOn) {
+                    // Draw the pixel in black
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+                } else {
+                    // Clear the pixel
+                    ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+                }
+            } else {
+                // For color canvas, update storedPaletteIndices
+                const color = currentButton === 2 ? secondaryColor : primaryColor;
+                const colorIndex = currentButton === 2 ? secondaryColorIndex : primaryColorIndex;
+
+                // Update the stored palette index for this pixel
+                const index = y * pixelSize + x;
+                storedPaletteIndices[index] = colorIndex;
+
+                // Clear the pixel if the color is fully transparent
+                if (color.endsWith('00')) {
+                    ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+                } else {
+                    // Draw the scaled pixel
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+                }
+            }
+        }
+    }
+
     updateColorIndicators();
     setupCanvas('color-canvas');
     setupCanvas('mono-canvas');
 
     // Define a default palette with 16 colors
     const defaultPalette = [
-        { r: 0, g: 0, b: 0, a: 255 },    // Black
+        { r: 0, g: 0, b: 0, a: 255 },       // Black
         { r: 255, g: 255, b: 255, a: 255 }, // White
-        { r: 255, g: 0, b: 0, a: 255 },  // Red
-        { r: 0, g: 255, b: 0, a: 255 },  // Green
-        { r: 0, g: 0, b: 255, a: 255 },  // Blue
-        { r: 255, g: 255, b: 0, a: 255 }, // Yellow
-        { r: 0, g: 255, b: 255, a: 255 }, // Cyan
-        { r: 255, g: 0, b: 255, a: 255 }, // Magenta
-        { r: 192, g: 192, b: 192, a: 255 }, // Silver
-        { r: 128, g: 128, b: 128, a: 255 }, // Gray
-        { r: 128, g: 0, b: 0, a: 255 },  // Maroon
-        { r: 128, g: 128, b: 0, a: 255 }, // Olive
-        { r: 0, g: 128, b: 0, a: 255 },  // Dark Green
-        { r: 128, g: 0, b: 128, a: 255 }, // Purple
-        { r: 0, g: 128, b: 128, a: 255 }, // Teal
-        { r: 0, g: 0, b: 128, a: 255 }   // Navy
+        { r: 255, g: 0, b: 0, a: 255 },     // Red
+        { r: 0, g: 255, b: 0, a: 255 },     // Green
+        { r: 0, g: 0, b: 255, a: 255 },     // Blue
+        { r: 255, g: 255, b: 0, a: 255 },   // Yellow
+        { r: 0, g: 255, b: 255, a: 255 },   // Cyan
+        { r: 255, g: 0, b: 255, a: 255 },   // Magenta
+        { r: 187, g: 187, b: 187, a: 255 }, // Silver (11*17)
+        { r: 136, g: 136, b: 136, a: 255 }, // Gray (8*17)
+        { r: 136, g: 0, b: 0, a: 255 },     // Maroon (8*17)
+        { r: 136, g: 136, b: 0, a: 255 },   // Olive (8*17)
+        { r: 0, g: 136, b: 0, a: 255 },     // Dark Green (8*17)
+        { r: 136, g: 0, b: 136, a: 255 },   // Purple (8*17)
+        { r: 0, g: 136, b: 136, a: 255 },   // Teal (8*17)
+        { r: 0, g: 0, b: 136, a: 255 }      // Navy (8*17)
     ];
 
     // Render the default palette
     displayColorPalette(defaultPalette);
 
-    const vmsFileInput = document.getElementById('vms-file');
-    const vmsUploadLabel = document.querySelector('label[for="vms-file"]');
+    // Initialize the canvas with the default palette
+    currentPalette = defaultPalette;
+    updateCanvasWithPalette(currentPalette);
 
     // Prevent default drag behaviors
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -978,120 +1301,203 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsArrayBuffer(file);
     }
-});
 
-function updateCanvasWithPalette(palette) {
-    console.log('Updating canvas with new palette');
-    const canvas = document.getElementById('color-canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const originalWidth = 32;
-    const originalHeight = 32;
-    const imageData = ctx.createImageData(originalWidth, originalHeight);
-    const data = imageData.data;
+    function findClosestColor(r, g, b, palette) {
+        let closestColor = palette[0];
+        let minDistance = Infinity;
 
-    // Assuming you have a stored array of palette indices for each pixel
-    const paletteIndices = getStoredPaletteIndices(); // Implement this function to retrieve stored indices
+        palette.forEach(color => {
+            const distance = Math.sqrt(
+                Math.pow(r - color.r, 2) +
+                Math.pow(g - color.g, 2) +
+                Math.pow(b - color.b, 2)
+            );
 
-    for (let i = 0; i < paletteIndices.length; i++) {
-        const index = paletteIndices[i]; // Get the palette index for this pixel
-
-        // Check if the index is valid
-        if (index >= 0 && index < palette.length) {
-            const color = palette[index]; // Get the new color from the updated palette
-
-            if (color) {
-                const pixelIndex = i * 4;
-                data[pixelIndex] = color.r;
-                data[pixelIndex + 1] = color.g;
-                data[pixelIndex + 2] = color.b;
-                data[pixelIndex + 3] = color.a; // Ensure alpha is also updated
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestColor = color;
             }
-        }
+        });
+
+        return closestColor;
     }
 
-    // Draw the updated 32x32 image data onto the canvas
-    ctx.putImageData(imageData, 0, 0);
+    document.getElementById('color-indicators').addEventListener('click', function() {
+        // Swap the primary and secondary colors
+        [primaryColor, secondaryColor] = [secondaryColor, primaryColor];
+        [primaryColorIndex, secondaryColorIndex] = [secondaryColorIndex, primaryColorIndex];
 
-    // Scale the 32x32 image data to the full canvas size
-    const scaledImageData = ctx.createImageData(canvas.width, canvas.height);
-    for (let y = 0; y < originalHeight; y++) {
-        for (let x = 0; x < originalWidth; x++) {
-            const originalIndex = (y * originalWidth + x) * 4;
-            for (let dy = 0; dy < scaleFactor; dy++) {
-                for (let dx = 0; dx < scaleFactor; dx++) {
-                    const scaledIndex = ((y * scaleFactor + dy) * canvas.width + (x * scaleFactor + dx)) * 4;
-                    scaledImageData.data[scaledIndex] = data[originalIndex];
-                    scaledImageData.data[scaledIndex + 1] = data[originalIndex + 1];
-                    scaledImageData.data[scaledIndex + 2] = data[originalIndex + 2];
-                    scaledImageData.data[scaledIndex + 3] = data[originalIndex + 3];
-                }
-            }
+        // Update the color indicators to reflect the change
+        updateColorIndicators();
+    });
+
+    function validateInput(input) {
+        let value = parseInt(input.value);
+        if (value < 0) {
+            value = Math.abs(value); // Make it positive
         }
+        if (value > 15) {
+            value = parseInt(value.toString().charAt(0)); // Truncate to first digit
+        }
+        input.value = value;
     }
 
-    ctx.putImageData(scaledImageData, 0, 0);
-    console.log('Canvas updated with new palette');
-}
+    redInput.addEventListener('blur', () => validateInput(redInput));
+    greenInput.addEventListener('blur', () => validateInput(greenInput));
+    blueInput.addEventListener('blur', () => validateInput(blueInput));
+    alphaInput.addEventListener('blur', () => validateInput(alphaInput));
 
-function findClosestColor(r, g, b, palette) {
-    let closestColor = palette[0];
-    let minDistance = Infinity;
+    redInput.addEventListener('input', updateColorPreview);
+    greenInput.addEventListener('input', updateColorPreview);
+    blueInput.addEventListener('input', updateColorPreview);
+    alphaInput.addEventListener('input', updateColorPreview);
 
-    palette.forEach(color => {
-        const distance = Math.sqrt(
-            Math.pow(r - color.r, 2) +
-            Math.pow(g - color.g, 2) +
-            Math.pow(b - color.b, 2)
-        );
+    updateColorPreview(); // Initialize the preview
 
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestColor = color;
+    displayColorPalette(currentPalette); // Initial display of the palette
+
+    // Update the hueSlider click event to move the indicator
+    hueSlider.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = hueSlider.getBoundingClientRect();
+        hueIndicatorX = e.clientX - rect.left;
+        currentHue = hueIndicatorX / hueSlider.width;
+        drawHueSlider();
+        drawColorCanvas(currentHue);
+        updateColorFromPosition(colorIndicatorX, colorIndicatorY);
+        drawCircle(colorIndicatorX, colorIndicatorY);
+    });
+
+    // Add event listeners for dragging the hue indicator
+    hueSlider.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isHueSliderDragging = true;
+        updateHueIndicatorPosition(e);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isHueSliderDragging) {
+            e.stopPropagation();
+            updateHueIndicatorPosition(e);
         }
     });
 
-    return closestColor;
-}
+    document.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+        isHueSliderDragging = false;
+    });
 
-function rgbaToHex(r, g, b, a) {
-    const hexR = (r & 0xFF).toString(16).padStart(2, '0');
-    const hexG = (g & 0xFF).toString(16).padStart(2, '0');
-    const hexB = (b & 0xFF).toString(16).padStart(2, '0');
-    const hexA = (a & 0xFF).toString(16).padStart(2, '0');
-    return `#${hexR}${hexG}${hexB}${hexA}`.toUpperCase();
-}
+    function updateHueIndicatorPosition(e) {
+        const rect = hueSlider.getBoundingClientRect();
+        hueIndicatorX = Math.max(0, Math.min(e.clientX - rect.left, hueSlider.width));
+        currentHue = hueIndicatorX / hueSlider.width;
+        drawHueSlider();
+        drawColorCanvas(currentHue);
+        updateColorFromPosition(colorIndicatorX, colorIndicatorY);
+        drawCircle(colorIndicatorX, colorIndicatorY);
+    }
 
-function hexToRgba(hex) {
-    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    return match ? { r: parseInt(match[1], 16), g: parseInt(match[2], 16), b: parseInt(match[3], 16), a: parseInt(match[4], 16) } : null;
-}
+    // Handle hue selection
+    hueSlider.addEventListener('click', (e) => {
+        const rect = hueSlider.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        currentHue = x / hueSlider.width;
+        drawColorCanvas(currentHue);
+        drawCircle(colorIndicatorX, colorIndicatorY);
+    });
 
-function hexToRgbaString(hex) {
-    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    return match ? `rgba(${parseInt(match[1], 16)}, ${parseInt(match[2], 16)}, ${parseInt(match[3], 16)}, ${parseInt(match[4], 16) / 255})` : null;
-}
+    // Handle mouse events for dragging
+    colorPickerCanvas.addEventListener('mousedown', (e) => {
+        isColorPickerDragging = true;
+        updateCirclePosition(e);
+    });
 
-function getStoredPaletteIndices() {
-    // Ensure this function returns the correct indices for the current canvas state
-    return storedPaletteIndices; // Make sure this is correctly populated elsewhere in your code
-}
+    document.addEventListener('mousemove', (e) => {
+        if (isColorPickerDragging) {
+            updateCirclePosition(e);
+        }
+    });
 
-document.getElementById('color-indicators').addEventListener('click', function() {
-    // Swap the primary and secondary colors
-    [primaryColor, secondaryColor] = [secondaryColor, primaryColor];
-    [primaryColorIndex, secondaryColorIndex] = [secondaryColorIndex, primaryColorIndex];
+    document.addEventListener('mouseup', () => {
+        isColorPickerDragging = false;
+    });
 
-    // Update the color indicators to reflect the change
-    updateColorIndicators();
-});
+    function updateCirclePosition(e) {
+        const rect = colorPickerCanvas.getBoundingClientRect();
+        colorIndicatorX = Math.max(0, Math.min(e.clientX - rect.left, colorPickerCanvas.width - 1));
+        colorIndicatorY = Math.max(0, Math.min(e.clientY - rect.top, colorPickerCanvas.height - 1));
+        drawColorCanvas(currentHue);
+        drawCircle(colorIndicatorX, colorIndicatorY);
+        updateColorFromPosition(colorIndicatorX, colorIndicatorY);
+    }
 
-function updateMonoPixelStates(monoBitmapData) {
-    monoPixelStates = [];
-    for (let i = 0; i < monoBitmapData.length; i++) {
-        const byte = monoBitmapData[i];
-        for (let bit = 0; bit < 8; bit++) {
-            const isBlack = (byte & (1 << (7 - bit))) !== 0;
-            monoPixelStates.push(isBlack);
+    function updateColorFromPosition(x, y) {
+        const imageData = colorCtx.getImageData(x, y, 1, 1).data;
+        const [r, g, b] = imageData;
+
+        // Update the primary color
+        if (currentPaletteIndex === primaryColorIndex) {
+            primaryColor = rgbaToHex(r, g, b, 255);
+            updateColorIndicators();
+        }
+        if (currentPaletteIndex === secondaryColorIndex) {
+            secondaryColor = rgbaToHex(r, g, b, 255);
+            updateColorIndicators();
+        }
+
+        // Update sliders and preview
+        redInput.value = r / 17;
+        greenInput.value = g / 17;
+        blueInput.value = b / 17;
+        alphaInput.value = 15; // Assuming full opacity
+        updateColorPreview();
+
+        // Update the palette
+        if (currentPaletteIndex !== null) {
+            currentPalette[currentPaletteIndex] = { r, g, b, a: 255 };
+            displayColorPalette(currentPalette);
+            updateCanvasWithPalette(currentPalette);
         }
     }
+
+    drawHueSlider();
+    drawColorCanvas(currentHue); // Initialize with red
+});
+
+function rgbToHsb(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+
+    let h = 0;
+    let s = max === 0 ? 0 : delta / max;
+    let v = max;
+
+    if (delta !== 0) {
+        switch (max) {
+            case r:
+                h = (g - b) / delta + (g < b ? 6 : 0);
+                break;
+            case g:
+                h = (b - r) / delta + 2;
+                break;
+            case b:
+                h = (r - g) / delta + 4;
+                break;
+        }
+        h /= 6;
+    }
+
+    return [h, s, v];
 }
+
+document.addEventListener('mousedown', function(event) {
+    const customColorPicker = document.getElementById('custom-color-picker');
+    if (customColorPicker && !customColorPicker.contains(event.target)) {
+        customColorPicker.style.display = 'none';
+    }
+});
