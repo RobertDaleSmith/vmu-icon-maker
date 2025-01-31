@@ -13,6 +13,12 @@ let secondaryColor = '#FFFFFFFF'; // Default secondary color
 let primaryColorIndex = 0; // Default index for primary color
 let secondaryColorIndex = 1; // Default index for secondary color
 
+// Add the 3D mode byte sequence constant
+const THREED_MODE_SEQUENCE = new Uint8Array([
+    0xda, 0x69, 0xd0, 0xda, 0xc7, 0x4e, 0xf8, 0x36,
+    0x18, 0x92, 0x79, 0x68, 0x2d, 0xb5, 0x30, 0x86
+]);
+
 document.getElementById('color-file').addEventListener('change', function(event) {
   handleFile(event, 'color');
 });
@@ -813,8 +819,16 @@ function createVMSData(description, monoPixelStates, storedPaletteIndices, curre
     const colorBitmapBytes = convertPaletteIndicesToBitmap(storedPaletteIndices);
     vmsData.set(colorBitmapBytes, 192);
 
-    // 0x2C0, 320 bytes: Fixed values
-    vmsData.set(new Uint8Array(320).fill(0x00), 704);
+    // 0x2C0: Add 3D mode sequence if enabled
+    const threeDModeEnabled = document.getElementById('3d-mode-toggle').checked;
+    if (threeDModeEnabled) {
+        vmsData.set(THREED_MODE_SEQUENCE, 0x2C0);
+    }
+
+    // Fill remaining bytes with 0x00
+    for (let i = 0x2C0 + (threeDModeEnabled ? 16 : 0); i < 1024; i++) {
+        vmsData[i] = 0x00;
+    }
 
     return vmsData;
 }

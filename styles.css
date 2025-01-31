@@ -300,3 +300,34 @@ input#description {
   width: 112px;
   font-size: 12px;
 }
+
+.option-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 8px 0;
+    position: relative;
+}
+
+.option-container .tooltip {
+    display: none;
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+}
+
+.option-container:hover .tooltip {
+    display: block;
+}
+
+#3d-mode-toggle {
+    cursor: pointer;
+}
