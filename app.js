@@ -79,6 +79,11 @@ let colorIndicatorY = 0; // Default to the top position
 // Add a variable to track the hue indicator position
 let hueIndicatorX = 0;
 
+// Add these variables near the other slider-related variables
+const opacitySlider = document.getElementById('opacity-slider');
+const opacityCtx = opacitySlider.getContext('2d', { willReadFrequently: true });
+let opacityIndicatorX = opacitySlider.width; // Default to full opacity
+
 function rgbaToHex(r, g, b, a) {
     const hexR = (r & 0xFF).toString(16).padStart(2, '0');
     const hexG = (g & 0xFF).toString(16).padStart(2, '0');
@@ -108,7 +113,7 @@ function hsbToRgb(h, s, v) {
     return [r * 255, g * 255, b * 255];
 }
 
-// Update the drawHueSlider function to draw the indicator
+// Update the drawHueSlider function
 function drawHueSlider() {
     const width = hueSlider.width;
     const gradient = hueCtx.createLinearGradient(0, 0, width, 0);
@@ -126,14 +131,24 @@ function drawHueSlider() {
     // Calculate the color for the current hue
     const [r, g, b] = hsbToRgb(hueIndicatorX / width, 1, 1);
 
+    // Add shadow before drawing the indicator
+    hueCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+    hueCtx.shadowBlur = 1;
+    hueCtx.shadowOffsetX = 1;
+
     // Draw the hue indicator with the selected color
     hueCtx.beginPath();
     hueCtx.arc(hueIndicatorX, hueSlider.height / 2, hueSlider.height / 2, 0, Math.PI * 2);
-    hueCtx.fillStyle = `rgb(${r}, ${g}, ${b})`; // Fill with the selected color
+    hueCtx.fillStyle = `rgb(${r}, ${g}, ${b})`; 
     hueCtx.fill();
-    hueCtx.strokeStyle = 'white'; // Set the stroke color to white
-    hueCtx.lineWidth = 3; // Set the stroke width to 3px
+    hueCtx.strokeStyle = 'white';
+    hueCtx.lineWidth = 3;
     hueCtx.stroke();
+
+    // Reset shadow settings
+    hueCtx.shadowColor = 'transparent';
+    hueCtx.shadowBlur = 0;
+    hueCtx.shadowOffsetX = 0;
 }
 
 // Draw the color canvas based on the selected hue
@@ -225,13 +240,17 @@ function updateCanvasWithPalette(palette) {
     // console.log('Canvas updated with new palette');
 }
 
-function resetColorPickerIndicators(r, g, b) {
+function resetColorPickerIndicators(r, g, b, a) {
     const [hue, saturation, brightness] = rgbToHsb(r, g, b);
 
     // Update the hue indicator position
     hueIndicatorX = hue * hueSlider.width;
     currentHue = hue;
     drawHueSlider();
+
+    // Update the opacity indicator position
+    opacityIndicatorX = (a / 255) * opacitySlider.width;
+    drawOpacitySlider();
 
     // Update the color indicator positions
     colorIndicatorX = Math.max(0, Math.min(saturation * colorPickerCanvas.width, colorPickerCanvas.width - 1));
@@ -267,7 +286,7 @@ function updateColorPreview(event) {
 
         // Reset the color-picker-canvas and hue slider indicators 
         // only if the color is changed by color form inputs.
-        if (event) resetColorPickerIndicators(r, g, b);
+        if (event) resetColorPickerIndicators(r, g, b, a);
     }
 }
 
@@ -311,6 +330,10 @@ function showColorPicker(index, event) {
     } else {
         console.error('customColorPicker element not found');
     }
+
+    // Set the opacity slider position based on the alpha value
+    opacityIndicatorX = (color.a / 255) * opacitySlider.width;
+    drawOpacitySlider();
 }
 
 function hexToRgba(hex) {
@@ -1413,6 +1436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         drawColorCanvas(currentHue);
         updateColorFromPosition(colorIndicatorX, colorIndicatorY);
         drawCircle(colorIndicatorX, colorIndicatorY);
+        drawOpacitySlider();
     }
 
     // Handle hue selection
@@ -1470,6 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         blueInput.value = b / 17;
         // Don't update the alpha input, keep its current value
         updateColorPreview();
+        drawOpacitySlider();
 
         // Update the palette
         if (currentPaletteIndex !== null) {
@@ -1481,6 +1506,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     drawHueSlider();
     drawColorCanvas(currentHue); // Initialize with red
+
+    drawOpacitySlider();
 });
 
 function rgbToHsb(r, g, b) {
@@ -1520,3 +1547,76 @@ document.addEventListener('mousedown', function(event) {
         customColorPicker.style.display = 'none';
     }
 });
+
+// Update the drawOpacitySlider function
+function drawOpacitySlider() {
+    const width = opacitySlider.width;
+    const height = opacitySlider.height;
+    
+    // Get current RGB values and scale them from 4-bit to 8-bit
+    // Add default values of 0 if inputs are empty or NaN
+    const r = (parseInt(redInput.value) || 0) * 17;
+    const g = (parseInt(greenInput.value) || 0) * 17;
+    const b = (parseInt(blueInput.value) || 0) * 17;
+    
+    // Clear the canvas first
+    opacityCtx.clearRect(0, 0, width, height);
+    
+    // Create gradient from transparent to solid color
+    const gradient = opacityCtx.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 1)`);
+    
+    // Draw the gradient background
+    opacityCtx.fillStyle = gradient;
+    opacityCtx.fillRect(0, 0, width, height);
+
+    // Add shadow before drawing the indicator
+    opacityCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+    opacityCtx.shadowBlur = 2;
+    opacityCtx.shadowOffsetX = 1;
+
+    // Draw the indicator at the current position
+    opacityCtx.beginPath();
+    opacityCtx.arc(opacityIndicatorX, height / 2, height / 2, 0, Math.PI * 2);
+    opacityCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacityIndicatorX / width})`; 
+    opacityCtx.fill();
+    opacityCtx.strokeStyle = 'white';
+    opacityCtx.lineWidth = 3;
+    opacityCtx.stroke();
+
+    // Reset shadow settings
+    opacityCtx.shadowColor = 'transparent';
+    opacityCtx.shadowBlur = 2;
+    opacityCtx.shadowOffsetX = 0;
+}
+
+// Add opacity slider event listeners
+let isOpacitySliderDragging = false;
+
+opacitySlider.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    isOpacitySliderDragging = true;
+    updateOpacityIndicatorPosition(e);
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (isOpacitySliderDragging) {
+        e.stopPropagation();
+        updateOpacityIndicatorPosition(e);
+    }
+});
+
+document.addEventListener('mouseup', (e) => {
+    e.stopPropagation();
+    isOpacitySliderDragging = false;
+});
+
+function updateOpacityIndicatorPosition(e) {
+    const rect = opacitySlider.getBoundingClientRect();
+    opacityIndicatorX = Math.max(0, Math.min(e.clientX - rect.left, opacitySlider.width));
+    const opacity = Math.round((opacityIndicatorX / opacitySlider.width) * 15); // Convert to 4-bit (0-15)
+    alphaInput.value = opacity;
+    drawOpacitySlider();
+    updateColorPreview();
+}

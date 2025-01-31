@@ -78,7 +78,10 @@
             </div>
             <div id="color-preview-container">
                 <div id="color-preview"></div>
-                <canvas id="hue-slider" width="150" height="12"></canvas>
+                <div id="color-sliders">
+                    <canvas id="hue-slider" width="150" height="12"></canvas>
+                    <canvas id="opacity-slider" width="150" height="12"></canvas>
+                </div>
             </div>
             <div id="color-picker-inputs">
                 <input type="number" class="color-picker-input" id="red" min="0" max="15">
@@ -93,6 +96,7 @@
                 <label for="alpha" class="color-picker-label">A</label>
             </div>
         </div>
+        
     </div>
     <script src="app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

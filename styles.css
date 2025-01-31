@@ -165,6 +165,27 @@ input#description {
   width: 30px; height: 30px; border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
+#color-sliders {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#opacity-slider {
+  cursor: pointer;
+  background-image: 
+    linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+    linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+  background-size: 12px 12px;  /* Changed to 12px to get two rows */
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0px;  /* Adjusted to half of 12px */
+  background-color: #ffffff;
+  border-radius: 2px;
+}
+
 .color-picker-container {
   position: absolute;
   background-color: white;
