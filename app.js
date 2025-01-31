@@ -680,42 +680,34 @@ function processMonoImage(img) {
     // Define a threshold for converting to black or transparent
     const threshold = 64; // Adjust this value as needed
 
-    // Process each pixel
-    monoPixelStates = []; // Reset monoPixelStates
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        // Calculate brightness
-        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        if (brightness > threshold) {
-            // Set pixel to transparent
-            data[i + 3] = 0; // Alpha channel
-            monoPixelStates.push(false);
-        } else {
-            // Set pixel to black
-            data[i] = 0;     // Red channel
-            data[i + 1] = 0; // Green channel
-            data[i + 2] = 0; // Blue channel
-            data[i + 3] = 255; // Alpha channel
-            monoPixelStates.push(true);
-        }
-    }
-
-    // Put the modified image data back onto the hidden canvas
-    hiddenCtx.putImageData(imageData, 0, 0);
-
-    // Draw the processed 32x32 image data onto the visible canvas
+    // Get the visible canvas and its context
     const canvas = document.getElementById('mono-canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    // Clear the canvas first
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Disable image smoothing to maintain sharp pixel edges
-    ctx.imageSmoothingEnabled = false;
+    // Process each pixel
+    monoPixelStates = []; // Reset monoPixelStates
+    for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 32; x++) {
+            const i = (y * 32 + x) * 4;
+            const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            const isOn = brightness <= threshold;
+            monoPixelStates.push(isOn);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    ctx.drawImage(hiddenCanvas, 0, 0, canvas.width, canvas.height);
+            if (isOn) {
+                // Draw LCD-style pixel with gaps
+                ctx.fillStyle = '#1d4781';
+                ctx.fillRect(
+                    x * scaleFactor + 1,
+                    y * scaleFactor + 1,
+                    scaleFactor - 1,
+                    scaleFactor - 1
+                );
+            }
+        }
+    }
 }
 
 function saveVMSVMI() {
@@ -1048,29 +1040,45 @@ function drawImageDataToCanvas(imageData, canvasId) {
             let b = imageData.data[index + 2];
             let a = imageData.data[index + 3];
 
-            // If the alpha is 0, use the default color
-            if (a === 0) {
-                r = defaultColor.r;
-                g = defaultColor.g;
-                b = defaultColor.b;
-                a = defaultColor.a;
-            }
+            // If this is the mono canvas and the pixel is black (value = 0)
+            if (canvasId === 'mono-canvas' && r === 0) {
+                // Draw LCD-style pixel with gaps
+                ctx.fillStyle = '#1d4781';
+                ctx.fillRect(
+                    x * scaleFactor + 1,
+                    y * scaleFactor + 1,
+                    scaleFactor - 1,
+                    scaleFactor - 1
+                );
+            } else if (canvasId === 'color-canvas') {
+                // For color canvas, continue with normal rendering
+                // If the alpha is 0, use the default color
+                if (a === 0) {
+                    r = defaultColor.r;
+                    g = defaultColor.g;
+                    b = defaultColor.b;
+                    a = defaultColor.a;
+                }
 
-            // Draw the scaled pixel
-            for (let dy = 0; dy < scaleFactor; dy++) {
-                for (let dx = 0; dx < scaleFactor; dx++) {
-                    const scaledIndex = ((y * scaleFactor + dy) * scaledWidth + (x * scaleFactor + dx)) * 4;
-                    scaledImageData.data[scaledIndex] = r;
-                    scaledImageData.data[scaledIndex + 1] = g;
-                    scaledImageData.data[scaledIndex + 2] = b;
-                    scaledImageData.data[scaledIndex + 3] = a;
+                // Draw the scaled pixel
+                for (let dy = 0; dy < scaleFactor; dy++) {
+                    for (let dx = 0; dx < scaleFactor; dx++) {
+                        const scaledIndex = ((y * scaleFactor + dy) * scaledWidth + (x * scaleFactor + dx)) * 4;
+                        scaledImageData.data[scaledIndex] = r;
+                        scaledImageData.data[scaledIndex + 1] = g;
+                        scaledImageData.data[scaledIndex + 2] = b;
+                        scaledImageData.data[scaledIndex + 3] = a;
+                    }
                 }
             }
         }
     }
 
-    // Put the scaled image data onto the canvas
-    ctx.putImageData(scaledImageData, 0, 0);
+    // Only put the scaled image data for the color canvas
+    if (canvasId === 'color-canvas') {
+        ctx.putImageData(scaledImageData, 0, 0);
+    }
+    
     console.log(`Image drawn on ${canvasId} with scale factor ${scaleFactor}`);
 }
 
@@ -1150,6 +1158,12 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = pixelSize * scaleFactor;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+        // Make canvas transparent by default
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Add CSS class for transparency background
+        // canvas.classList.add('transparent-bg');
+
         let drawing = false;
         let currentButton = null;
 
@@ -1196,9 +1210,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 monoPixelStates[index] = isOn;
 
                 if (isOn) {
-                    // Draw the pixel in black
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+                    // Draw the pixel with LCD-style gaps
+                    ctx.fillStyle = '#1d4781';
+                    // Draw the pixel slightly smaller and offset by 1px
+                    ctx.fillRect(
+                        x * scaleFactor + 1, // Offset by 1px from left
+                        y * scaleFactor + 1, // Offset by 1px from top
+                        scaleFactor - 1,     // Reduce width by 1px
+                        scaleFactor - 1      // Reduce height by 1px
+                    );
                 } else {
                     // Clear the pixel
                     ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
@@ -1212,14 +1232,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = y * pixelSize + x;
                 storedPaletteIndices[index] = colorIndex;
 
-                // Clear the pixel if the color is fully transparent
-                if (color.endsWith('00')) {
-                    ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-                } else {
-                    // Draw the scaled pixel
-                    ctx.fillStyle = color;
-                    ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
-                }
+                // Clear the pixel area first
+                ctx.clearRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+
+                // Draw the scaled pixel with color
+                ctx.fillStyle = color;
+                ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
             }
         }
     }
@@ -1434,14 +1452,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateColorFromPosition(x, y) {
         const imageData = colorCtx.getImageData(x, y, 1, 1).data;
         const [r, g, b] = imageData;
+        const currentAlpha = parseInt(alphaInput.value); // Keep the current alpha value
 
         // Update the primary color
         if (currentPaletteIndex === primaryColorIndex) {
-            primaryColor = rgbaToHex(r, g, b, 255);
+            primaryColor = rgbaToHex(r, g, b, currentAlpha * 17);
             updateColorIndicators();
         }
         if (currentPaletteIndex === secondaryColorIndex) {
-            secondaryColor = rgbaToHex(r, g, b, 255);
+            secondaryColor = rgbaToHex(r, g, b, currentAlpha * 17);
             updateColorIndicators();
         }
 
@@ -1449,12 +1468,12 @@ document.addEventListener('DOMContentLoaded', () => {
         redInput.value = r / 17;
         greenInput.value = g / 17;
         blueInput.value = b / 17;
-        alphaInput.value = 15; // Assuming full opacity
+        // Don't update the alpha input, keep its current value
         updateColorPreview();
 
         // Update the palette
         if (currentPaletteIndex !== null) {
-            currentPalette[currentPaletteIndex] = { r, g, b, a: 255 };
+            currentPalette[currentPaletteIndex] = { r, g, b, a: currentAlpha * 17 };
             displayColorPalette(currentPalette);
             updateCanvasWithPalette(currentPalette);
         }
