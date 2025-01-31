@@ -762,24 +762,41 @@ function processMonoImage(img) {
     }
 }
 
-function saveVMSVMI() {
-    // Retrieve the description value
-    const description = document.getElementById('description').value || 'ICONDATA_VMS';
+async function saveVMSVMI() {
+    const description = document.getElementById('description').value.toUpperCase();
+    if (!description) {
+        alert('Please enter a description');
+        return;
+    }
 
-    // Create VMI and VMS data
-    const vmiData = createVMIData();
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
+    const vmiData = createVMIData(description);
 
-    // Save VMI file
-    saveFile(vmiData, 'ICONDATA.VMI');
+    // Create a new ZIP file
+    const zip = new JSZip();
 
-    // Save VMS file
-    saveFile(vmsData, 'ICONDATA.VMS');
+    // Add the VMS and VMI files to the ZIP
+    zip.file('ICONDATA.VMS', vmsData);
+    zip.file('ICONDATA.VMI', vmiData);
 
-    console.log('ICONDATA.VMI and ICONDATA.VMS saved.');
+    // Generate the ZIP file
+    const zipBlob = await zip.generateAsync({type: "blob"});
+
+    // Create download link for the ZIP file
+    const downloadLink = document.createElement('a');
+    downloadLink.href = URL.createObjectURL(zipBlob);
+    downloadLink.download = `${description}.zip`;
+
+    // Trigger the download
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+
+    // Clean up the URL object
+    URL.revokeObjectURL(downloadLink.href);
 }
 
-function createVMIData() {
+function createVMIData(description) {
   const now = new Date();
   const vmiData = new Uint8Array(108);
 
