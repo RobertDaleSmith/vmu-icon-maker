@@ -107,7 +107,7 @@ body {
 #hue-slider {
   border-radius: 2px;
 }
-.custom-file-upload, .custom-save-button {
+.button {
   display: inline-block;
   padding: 12px;
   cursor: pointer;
@@ -117,7 +117,7 @@ body {
   border: 1px solid #007bff;
   text-align: center;
 }
-.custom-file-upload:hover, .custom-save-button:hover {
+.button:hover {
   background-color: #0056b3;
   border-color: #0056b3;
 }
@@ -264,4 +264,39 @@ input#description {
 
 #mono-canvas {
   background: linear-gradient(to bottom, #8af8db, #68a38f);
+}
+
+#unified-file-label {
+  display: flex;
+  border: 2px dashed #ffffff7a;
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+  width: fit-content;
+  justify-self: center;
+  justify-content: center;
+  align-items: center;
+  margin: 0 8px;
+}
+
+#unified-file-label:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+#unified-file-label:hover .button {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+#unified-file-label span {
+  display: inline-block;
+  padding: 4px 16px;
+  font-size: 14px;
+}
+
+#unified-file-label .button {
+  display: inline-block;
+  padding: 16px 8px;
+  width: 112px;
+  font-size: 12px;
 }

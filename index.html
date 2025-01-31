@@ -15,8 +15,11 @@
     </div>
     <div id="content-area">
         <div id="open-area">
-            <label for="vms-file" class="custom-file-upload">Import <small>(.vms)</small></label>
-            <input type="file" id="vms-file" accept=".vms" style="display: none;">
+            <label for="unified-file" id="unified-file-label">
+                <span>DRAG & DROP IMAGES OR VMS FILES ANYWHERE</span>
+                <div class="button">OR CLICK HERE</div>
+            </label>
+            <input type="file" id="unified-file" accept=".vms, .bmp,.png,.jpg,.jpeg,.gif,.webp" style="display: none;" />
         </div>
         <div id="color-area">
             <div class="inline-container">
@@ -65,11 +68,11 @@
             </div>
             <input type="text" id="description" maxlength="16" placeholder="Description" value="ICONDATA_VMS">
             <br>
-            <label for="save-button" class="custom-save-button">Generate</label>
+            <label for="save-button" class="button">Generate</label>
             <button id="save-button" onclick="saveVMSVMI()">Save</button>
         </div>
         <div id="description-area">
-            <p><span id="menu-description">&nbsp;</span></p>
+            <!-- <p><span id="menu-description">&nbsp;</span></p> -->
             <p><span id="boot-rom-description"></span></p>
         </div>
         <div id="custom-color-picker" class="color-picker-container" style="display: none;">
@@ -96,7 +99,6 @@
                 <label for="alpha" class="color-picker-label">A</label>
             </div>
         </div>
-        
     </div>
     <script src="app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

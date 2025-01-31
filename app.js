@@ -21,15 +21,36 @@ document.getElementById('mono-file').addEventListener('change', function(event) 
   handleFile(event, 'mono');
 });
 
-document.getElementById('vms-file').addEventListener('change', function(event) {
+document.getElementById('unified-file').addEventListener('change', function(event) {
     const file = event.target.files[0];
-    if (file) {
+    if (!file) return;
+
+    const extension = file.name.toLowerCase().split('.').pop();
+    const description = file.name.split('.')[0].slice(0, 16).toUpperCase();
+    
+    if (extension === 'vms') {
+        // Handle VMS file
         const reader = new FileReader();
         reader.onload = function(e) {
             const vmsData = new Uint8Array(e.target.result);
             parseVMSFile(vmsData);
         };
         reader.readAsArrayBuffer(file);
+    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+        // Handle image file - process both color and mono
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                processColorImage(img);
+                processMonoImage(img);
+                document.getElementById('description').value = description;
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        alert('Unsupported file type. Please use VMS or image files (PNG, JPG, GIF, WEBP).');
     }
 });
 
@@ -931,7 +952,7 @@ function parseMainDescription(data) {
     console.log('Menu Description:', menuDescription);
 
     // Update the UI with the menu description
-    document.getElementById('menu-description').textContent = menuDescription;
+    // document.getElementById('menu-description').textContent = menuDescription;
     document.getElementById('description').value = menuDescription;
 }
 
@@ -942,7 +963,8 @@ function parseBootRomDescription(data) {
     console.log('Boot ROM Description:', bootRomDescription);
 
     // Update the UI with the boot ROM description
-    document.getElementById('boot-rom-description').textContent = bootRomDescription;
+    // document.getElementById('boot-rom-description').textContent = bootRomDescription;
+    document.getElementById('description').value = `${bootRomDescription}`.slice(0, 16);
 }
 
 function updateMonoPixelStates(monoBitmapData) {
@@ -1167,7 +1189,7 @@ function convertMonoBitmapToImageData(bitmapBytes) {
 
 // Initialize the color indicators and both canvases
 document.addEventListener('DOMContentLoaded', () => {
-    const vmsUploadLabel = document.querySelector('label[for="vms-file"]');
+    // const vmsUploadLabel = document.querySelector('label[for="unified-file"]');
 
     redInput = document.getElementById('red');
     greenInput = document.getElementById('green');
@@ -1295,73 +1317,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the canvas with the default palette
     currentPalette = defaultPalette;
     updateCanvasWithPalette(currentPalette);
-
-    // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        vmsUploadLabel.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    // Highlight drop area when item is dragged over it
-    ['dragenter', 'dragover'].forEach(eventName => {
-        vmsUploadLabel.addEventListener(eventName, () => {
-            vmsUploadLabel.classList.add('highlight');
-        }, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        vmsUploadLabel.addEventListener(eventName, () => {
-            vmsUploadLabel.classList.remove('highlight');
-        }, false);
-    });
-
-    // Handle dropped files
-    vmsUploadLabel.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-
-        if (files.length) {
-            const file = files[0];
-            if (file.name.toLowerCase().endsWith('.vms')) {
-                handleVMSFile(file);
-            } else {
-                alert('Please drop a valid VMS file.');
-            }
-        }
-    });
-
-    function handleVMSFile(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const vmsData = new Uint8Array(e.target.result);
-            parseVMSFile(vmsData);
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    function findClosestColor(r, g, b, palette) {
-        let closestColor = palette[0];
-        let minDistance = Infinity;
-
-        palette.forEach(color => {
-            const distance = Math.sqrt(
-                Math.pow(r - color.r, 2) +
-                Math.pow(g - color.g, 2) +
-                Math.pow(b - color.b, 2)
-            );
-
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestColor = color;
-            }
-        });
-
-        return closestColor;
-    }
 
     document.getElementById('color-indicators').addEventListener('click', function() {
         // Swap the primary and secondary colors
@@ -1508,6 +1463,77 @@ document.addEventListener('DOMContentLoaded', () => {
     drawColorCanvas(currentHue); // Initialize with red
 
     drawOpacitySlider();
+
+    // Get the unified file input element
+    const unifiedFileLabel = document.querySelector('label[for="unified-file"]');
+
+    // Prevent default drag behaviors on the entire document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, preventDefaults, false);
+        // unifiedFileLabel.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // Highlight drop area when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+        document.addEventListener(eventName, () => {
+            document.body.classList.add('dragging');
+            unifiedFileLabel.classList.add('highlight');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, () => {
+            document.body.classList.remove('dragging');
+            unifiedFileLabel.classList.remove('highlight');
+        }, false);
+    });
+
+    // Handle dropped files anywhere on the document
+    document.addEventListener('drop', (e) => {
+        preventDefaults(e);
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length) {
+            const file = files[0];
+            const extension = file.name.toLowerCase().split('.').pop();
+            // Get filename without extension, limit to 16 chars, and uppercase
+            const description = file.name.split('.')[0].slice(0, 16).toUpperCase();
+            
+            // Clear the boot ROM description
+            document.getElementById('boot-rom-description').textContent = '';
+
+            if (extension === 'vms') {
+                // Handle VMS file
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const vmsData = new Uint8Array(e.target.result);
+                    parseVMSFile(vmsData);
+                };
+                reader.readAsArrayBuffer(file);
+            } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+                // Handle image file - process both color and mono
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        processColorImage(img);
+                        processMonoImage(img);
+                        document.getElementById('description').value = description;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('Unsupported file type. Please use VMS or image files (PNG, JPG, GIF, WEBP).');
+            }
+        }
+    });
 });
 
 function rgbToHsb(r, g, b) {
