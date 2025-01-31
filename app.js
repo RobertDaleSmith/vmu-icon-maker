@@ -589,6 +589,8 @@ function applyPaletteToCanvas(paletteIndices, palette) {
   // Draw the 32x32 image data onto the canvas
   ctx.putImageData(imageData, 0, 0);
 
+  colorCtx.clearRect(0, 0, canvas.width, canvas.height);
+
   // Scale the 32x32 image data to the full canvas size
   const scaledImageData = ctx.createImageData(canvas.width, canvas.height);
   for (let y = 0; y < 32; y++) {
@@ -1073,9 +1075,6 @@ function drawImageDataToCanvas(imageData, canvasId) {
     // Create a new ImageData object for the scaled image
     const scaledImageData = ctx.createImageData(scaledWidth, scaledHeight);
 
-    // Define the default color (white) for uncolored pixels
-    const defaultColor = { r: 255, g: 255, b: 255, a: 255 };
-
     // Scale each pixel
     for (let y = 0; y < imageData.height; y++) {
         for (let x = 0; x < imageData.width; x++) {
@@ -1096,15 +1095,6 @@ function drawImageDataToCanvas(imageData, canvasId) {
                     scaleFactor - 1
                 );
             } else if (canvasId === 'color-canvas') {
-                // For color canvas, continue with normal rendering
-                // If the alpha is 0, use the default color
-                if (a === 0) {
-                    r = defaultColor.r;
-                    g = defaultColor.g;
-                    b = defaultColor.b;
-                    a = defaultColor.a;
-                }
-
                 // Draw the scaled pixel
                 for (let dy = 0; dy < scaleFactor; dy++) {
                     for (let dx = 0; dx < scaleFactor; dx++) {
