@@ -49,7 +49,7 @@ document.getElementById('unified-file').addEventListener('change', function(even
             parseVMSFile(vmsData);
         };
         reader.readAsArrayBuffer(file);
-    } else if (['bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+    } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
         // Handle image file - process both color and mono
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -1717,7 +1717,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     parseVMSFile(vmsData);
                 };
                 reader.readAsArrayBuffer(file);
-            } else if (['bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+            } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
                 // Handle image file - process both color and mono
                 const reader = new FileReader();
                 reader.onload = function(e) {
