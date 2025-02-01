@@ -13,6 +13,13 @@ let secondaryColor = '#FFFFFFFF'; // Default secondary color
 let primaryColorIndex = 0; // Default index for primary color
 let secondaryColorIndex = 1; // Default index for secondary color
 
+// Add these global variables near the top with other globals
+let monoDrawPrimary = true; // true = draw black/on, false = draw transparent/off
+let monoDrawSecondary = false;
+
+// Add these global variables near the top with other globals
+let monoPaletteStates = new Array(16).fill(false); // Track toggle state for each palette index
+
 // Add the 3D mode byte sequence constant
 const THREED_MODE_SEQUENCE = new Uint8Array([
     0xda, 0x69, 0xd0, 0xda, 0xc7, 0x4e, 0xf8, 0x36,
@@ -574,6 +581,9 @@ function processColorImage(img) {
   applyPaletteToCanvas(storedPaletteIndices, quantizedColors);
 
   displayColorPalette(quantizedColors);
+
+  // Add this at the end
+  updateMonoPaletteStates();
 }
 
 function applyPaletteToCanvas(paletteIndices, palette) {
@@ -760,6 +770,9 @@ function processMonoImage(img) {
             }
         }
     }
+
+    // Add this at the end
+    updateMonoPaletteStates();
 }
 
 function createBMPData(imageData) {
@@ -1051,6 +1064,9 @@ function parseVMSFile(vmsData) {
     if (!isIconDataVMS) {
         parseBootRomDescription(vmsData);
     }
+
+    // Update mono palette states after parsing
+    updateMonoPaletteStates();
 }
 
 function checkForIconDataSignature(vmsData) {
@@ -1082,7 +1098,7 @@ function parseMainDescription(data) {
     // Parse the first 16 bytes for the VMS file menu description
     const menuDescriptionBytes = data.slice(0, 16);
     const menuDescription = new TextDecoder('shift_jis').decode(menuDescriptionBytes).replace(/\0/g, '').trim();
-    console.log('Menu Description:', menuDescription);
+    // console.log('Menu Description:', menuDescription);
 
     // Update the UI with the menu description
     // document.getElementById('menu-description').textContent = menuDescription;
@@ -1109,6 +1125,9 @@ function updateMonoPixelStates(monoBitmapData) {
             monoPixelStates.push(isBlack);
         }
     }
+
+    // Update mono palette states after updating pixel states
+    updateMonoPaletteStates();
 }
 
 function parseIconData(data, offset) {
@@ -1123,8 +1142,6 @@ function parseIconData(data, offset) {
         const colorPalette = parseIconPalette(paletteData);
         const colorImageData = convertBitmapToImageData(bitmapData, colorPalette);
         drawImageDataToCanvas(colorImageData, 'color-canvas');
-
-        console.log(colorPalette);
 
         // Display the color palette
         displayColorPalette(colorPalette);
@@ -1141,11 +1158,14 @@ function parseIconData(data, offset) {
         const monoImageData = convertMonoBitmapToImageData(monoBitmapData);
         drawImageDataToCanvas(monoImageData, 'mono-canvas');
 
-        // Update monoPixelStates
+        // Update monoPixelStates and mono palette
         updateMonoPixelStates(monoBitmapData);
     } else {
         console.error('File is too short to contain monochrome icon data');
     }
+
+    // Ensure mono palette is updated after all parsing is complete
+    updateMonoPaletteStates();
 }
 
 function parseIconPalette(paletteData) {
@@ -1193,7 +1213,7 @@ function convertBitmapToImageData(bitmapData, palette) {
 }
 
 function drawImageDataToCanvas(imageData, canvasId) {
-    console.log('drawImageDataToCanvas', imageData);
+    // console.log('drawImageDataToCanvas', imageData);
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const scaledWidth = imageData.width * scaleFactor;
@@ -1245,7 +1265,7 @@ function drawImageDataToCanvas(imageData, canvasId) {
         ctx.putImageData(scaledImageData, 0, 0);
     }
     
-    console.log(`Image drawn on ${canvasId} with scale factor ${scaleFactor}`);
+    // console.log(`Image drawn on ${canvasId} with scale factor ${scaleFactor}`);
 }
 
 function getOriginalImageData(canvasId) {
@@ -1365,9 +1385,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (x < 0 || x >= pixelSize || y < 0 || y >= pixelSize) return;
 
             if (canvasId === 'mono-canvas') {
-                // For monochrome canvas, toggle pixel state
+                // For monochrome canvas, use monoDrawPrimary/Secondary
                 const index = y * pixelSize + x;
-                const isOn = currentButton === 0; // Left click turns "on" (black), right click clears (transparent)
+                const isOn = currentButton === 0 ? monoDrawPrimary : monoDrawSecondary;
                 monoPixelStates[index] = isOn;
 
                 if (isOn) {
@@ -1399,6 +1419,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Draw the scaled pixel with color
                 ctx.fillStyle = color;
                 ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
+            }
+
+            // Update mono palette states if needed
+            if (canvasId === 'color-canvas' || canvasId === 'mono-canvas') {
+                updateMonoPaletteStates();
             }
         }
 
@@ -1458,6 +1483,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
+
+        // Add this at the end of the draw function
+        if (canvasId === 'color-canvas' || canvasId === 'mono-canvas') {
+            updateMonoPaletteStates();
+        }
     }
 
     updateColorIndicators();
@@ -1707,6 +1737,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // Initialize mono palette
+    displayMonoPalette();
+
+    // Add click handler for mono color indicators
+    document.getElementById('mono-color-indicators').addEventListener('click', function() {
+        // Swap the primary and secondary mono drawing states
+        [monoDrawPrimary, monoDrawSecondary] = [monoDrawSecondary, monoDrawPrimary];
+        updateMonoColorIndicators();
+    });
+
+    // Initialize mono color indicators
+    updateMonoColorIndicators();
 });
 
 function rgbToHsb(r, g, b) {
@@ -1818,4 +1861,126 @@ function updateOpacityIndicatorPosition(e) {
     alphaInput.value = opacity;
     drawOpacitySlider();
     updateColorPreview();
+}
+
+function displayMonoPalette() {
+    const paletteContainer = document.getElementById('mono-palette');
+    paletteContainer.innerHTML = ''; // Clear previous palette
+
+    const squareSize = 20; // Match color palette size
+    const columns = 8;
+    const gap = '0 2';
+    const margin = 4; // 2px margin for the inner square
+
+    // Calculate the total width of the palette container
+    const totalWidth = columns * (squareSize + gap) - gap;
+
+    // Set the palette container to display as a grid
+    paletteContainer.style.display = 'grid';
+    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize}px)`;
+    paletteContainer.style.gap = `${gap}px`;
+    paletteContainer.style.width = `${totalWidth}px`;
+
+    // Create squares for each palette index
+    for (let index = 0; index < 16; index++) {
+        const toggleDiv = document.createElement('div');
+        toggleDiv.style.width = `${squareSize}px`;
+        toggleDiv.style.height = `${squareSize}px`;
+        toggleDiv.style.border = '1px solid #ccc';
+        toggleDiv.style.cursor = 'pointer';
+        toggleDiv.style.position = 'relative'; // For absolute positioning of inner square
+        toggleDiv.style.backgroundColor = 'transparent';
+        toggleDiv.id = 'mono-palette-item-index-' + index;
+
+        if (monoPaletteStates[index]) {
+            // Create inner square with margin
+            const innerSquare = document.createElement('div');
+            innerSquare.style.position = 'absolute';
+            innerSquare.style.top = `${margin}px`;
+            innerSquare.style.left = `${margin}px`;
+            innerSquare.style.width = `${squareSize - (margin * 2)}px`;
+            innerSquare.style.height = `${squareSize - (margin * 2)}px`;
+            innerSquare.style.backgroundColor = '#1d4781';
+            toggleDiv.appendChild(innerSquare);
+        }
+
+        toggleDiv.addEventListener('click', () => {
+            toggleMonoPaletteIndex(index);
+        });
+
+        paletteContainer.appendChild(toggleDiv);
+    }
+}
+
+function toggleMonoPaletteIndex(index) {
+    // Toggle the state
+    monoPaletteStates[index] = !monoPaletteStates[index];
+
+    // Update all mono pixels that match this color index
+    for (let i = 0; i < storedPaletteIndices.length; i++) {
+        if (storedPaletteIndices[i] === index) {
+            monoPixelStates[i] = monoPaletteStates[index];
+        }
+    }
+
+    // Redraw mono canvas
+    const canvas = document.getElementById('mono-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw updated mono pixels
+    for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 32; x++) {
+            const index = y * 32 + x;
+            if (monoPixelStates[index]) {
+                ctx.fillStyle = '#1d4781';
+                ctx.fillRect(
+                    x * scaleFactor + 1,
+                    y * scaleFactor + 1,
+                    scaleFactor - 1,
+                    scaleFactor - 1
+                );
+            }
+        }
+    }
+
+    // Update mono palette display
+    displayMonoPalette();
+}
+
+function updateMonoPaletteStates() {
+    // Reset all states
+    monoPaletteStates.fill(false);
+
+    // For each palette index, check if all corresponding pixels are on
+    for (let paletteIndex = 0; paletteIndex < 16; paletteIndex++) {
+        let allOn = true;
+        let hasPixels = false;
+
+        // Check all pixels for this palette index
+        for (let i = 0; i < storedPaletteIndices.length; i++) {
+            if (storedPaletteIndices[i] === paletteIndex) {
+                hasPixels = true;
+                if (!monoPixelStates[i]) {
+                    allOn = false;
+                    break;
+                }
+            }
+        }
+
+        // Only set true if there were matching pixels and they were all on
+        monoPaletteStates[paletteIndex] = hasPixels && allOn;
+    }
+
+    // Update the display
+    displayMonoPalette();
+}
+
+// Add this new function
+function updateMonoColorIndicators() {
+    const primaryIndicator = document.getElementById('mono-primary-color-indicator');
+    const secondaryIndicator = document.getElementById('mono-secondary-color-indicator');
+
+    primaryIndicator.style.backgroundColor = monoDrawPrimary ? '#1d4781' : 'transparent';
+    secondaryIndicator.style.backgroundColor = monoDrawSecondary ? '#1d4781' : 'transparent';
 }

@@ -84,7 +84,7 @@ body {
   margin-bottom: 16px;
 }
 
-#palette-area {
+.palette-area {
   display: flex;
   flex-direction: row;
   margin-top: 10px;
@@ -370,4 +370,27 @@ input#description {
 
 #3d-mode-toggle {
     cursor: pointer;
+}
+
+#mono-color-indicators {
+    display: flex;
+    position: relative;
+    margin: 6px 18px;
+    height: 32px;
+    width: 32px;
+    cursor: pointer;
+}
+
+#mono-primary-color-indicator {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    border: 1px solid #000;
+}
+
+#mono-secondary-color-indicator {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    border: 1px solid #000;
 }
