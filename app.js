@@ -42,7 +42,7 @@ document.getElementById('unified-file').addEventListener('change', function(even
             parseVMSFile(vmsData);
         };
         reader.readAsArrayBuffer(file);
-    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+    } else if (['bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
         // Handle image file - process both color and mono
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -762,6 +762,85 @@ function processMonoImage(img) {
     }
 }
 
+function createBMPData(imageData) {
+    // BMP file header (14 bytes)
+    const fileHeader = new Uint8Array([
+        0x42, 0x4D,             // Signature 'BM'
+        0x3E, 0x04, 0x00, 0x00, // File size (1086 bytes = 14 + 40 + 32*32*4)
+        0x00, 0x00,             // Reserved
+        0x00, 0x00,             // Reserved
+        0x36, 0x00, 0x00, 0x00  // Offset to pixel data
+    ]);
+
+    // DIB header (40 bytes)
+    const dibHeader = new Uint8Array([
+        0x28, 0x00, 0x00, 0x00, // DIB header size
+        0x20, 0x00, 0x00, 0x00, // Width (32)
+        0x20, 0x00, 0x00, 0x00, // Height (32)
+        0x01, 0x00,             // Color planes
+        0x20, 0x00,             // Bits per pixel (32)
+        0x00, 0x00, 0x00, 0x00, // No compression
+        0x00, 0x00, 0x00, 0x00, // Image size (can be 0 for uncompressed)
+        0x00, 0x00, 0x00, 0x00, // X pixels per meter
+        0x00, 0x00, 0x00, 0x00, // Y pixels per meter
+        0x00, 0x00, 0x00, 0x00, // Total colors
+        0x00, 0x00, 0x00, 0x00  // Important colors
+    ]);
+
+    // Create pixel data array (32*32*4 bytes)
+    const pixelData = new Uint8Array(32 * 32 * 4);
+    let pixelOffset = 0;
+
+    // BMP stores pixels bottom-to-top, left-to-right, BGR format
+    for (let y = 31; y >= 0; y--) {
+        for (let x = 0; x < 32; x++) {
+            const srcOffset = (y * 32 + x) * 4;
+            pixelData[pixelOffset++] = imageData.data[srcOffset + 2]; // B
+            pixelData[pixelOffset++] = imageData.data[srcOffset + 1]; // G
+            pixelData[pixelOffset++] = imageData.data[srcOffset];     // R
+            pixelData[pixelOffset++] = imageData.data[srcOffset + 3]; // A
+        }
+    }
+
+    // Combine all parts into final BMP file
+    const bmpData = new Uint8Array(fileHeader.length + dibHeader.length + pixelData.length);
+    bmpData.set(fileHeader, 0);
+    bmpData.set(dibHeader, fileHeader.length);
+    bmpData.set(pixelData, fileHeader.length + dibHeader.length);
+
+    return bmpData;
+}
+
+function createPreviewGif() {
+    return new Promise((resolve, reject) => {
+        // Create canvases for both frames
+        const frame1 = document.getElementById('color-canvas');
+
+        gifshot.createGIF({
+            images: [frame1.toDataURL()],
+            gifWidth: 32,
+            gifHeight: 32,
+            interval: 1.0, // 1 second between frames
+            numFrames: 2,
+            frameDuration: 1,
+            sampleInterval: 1,
+            numWorkers: 1
+        }, function(obj) {
+            if(!obj.error) {
+                // Convert base64 to Uint8Array
+                const binaryString = window.atob(obj.image.split(',')[1]);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                resolve(bytes);
+            } else {
+                reject(obj.error);
+            }
+        });
+    });
+}
+
 async function saveVMSVMI() {
     const description = document.getElementById('description').value.toUpperCase();
     if (!description) {
@@ -771,29 +850,39 @@ async function saveVMSVMI() {
 
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
     const vmiData = createVMIData(description);
+    const bmpData = createBMPData(getOriginalImageData('color-canvas'));
 
-    // Create a new ZIP file
-    const zip = new JSZip();
+    try {
+        const gifData = await createPreviewGif();
 
-    // Add the VMS and VMI files to the ZIP
-    zip.file('ICONDATA.VMS', vmsData);
-    zip.file('ICONDATA.VMI', vmiData);
+        // Create a new ZIP file
+        const zip = new JSZip();
 
-    // Generate the ZIP file
-    const zipBlob = await zip.generateAsync({type: "blob"});
+        // Add all files to the ZIP
+        zip.file(`ICONDATA.VMS`, vmsData);
+        zip.file(`ICONDATA.VMI`, vmiData);
+        zip.file(`color.bmp`, bmpData);
+        zip.file(`preview.gif`, gifData);
 
-    // Create download link for the ZIP file
-    const downloadLink = document.createElement('a');
-    downloadLink.href = URL.createObjectURL(zipBlob);
-    downloadLink.download = `${description}.zip`;
+        // Generate the ZIP file
+        const zipBlob = await zip.generateAsync({type: "blob"});
 
-    // Trigger the download
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+        // Create download link for the ZIP file
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(zipBlob);
+        downloadLink.download = `VMU_ICONDATA_${description}.zip`;
 
-    // Clean up the URL object
-    URL.revokeObjectURL(downloadLink.href);
+        // Trigger the download
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+        // Clean up the URL object
+        URL.revokeObjectURL(downloadLink.href);
+    } catch (error) {
+        console.error('Error creating GIF:', error);
+        alert('Error creating preview GIF');
+    }
 }
 
 function createVMIData(description) {
@@ -932,6 +1021,17 @@ function saveFile(data, filename) {
 }
 
 function parseVMSFile(vmsData) {
+    // Check for 3D mode sequence at offset 0x2C0
+    const has3DMode = check3DModeSequence(vmsData);
+
+    // Update the checkbox
+    document.getElementById('3d-mode-toggle').checked = has3DMode;
+
+    // Clear both canvases before drawing new data
+    const colorCanvas = document.getElementById('color-canvas');
+    const colorCtx = colorCanvas.getContext('2d');
+    colorCtx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
+
     // Attempt to detect ICONDATA_VMS file
     const isIconDataVMS = checkForIconDataSignature(vmsData) || checkForKnownPatterns(vmsData);
 
@@ -1208,6 +1308,21 @@ function convertMonoBitmapToImageData(bitmapBytes) {
     return imageData;
 }
 
+// Add this helper function to check for 3D mode sequence
+function check3DModeSequence(vmsData) {
+    // Start checking at offset 0x2C0
+    const offset = 0x2C0;
+
+    // Check if each byte matches the sequence
+    for (let i = 0; i < THREED_MODE_SEQUENCE.length; i++) {
+        if (vmsData[offset + i] !== THREED_MODE_SEQUENCE[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 // Initialize the color indicators and both canvases
 document.addEventListener('DOMContentLoaded', () => {
     // const vmsUploadLabel = document.querySelector('label[for="unified-file"]');
@@ -1219,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupCanvas(canvasId) {
         const canvas = document.getElementById(canvasId);
-        const pixelSize = 32; // Original pixel size
+        const pixelSize = 32;
         canvas.width = pixelSize * scaleFactor;
         canvas.height = pixelSize * scaleFactor;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -1227,47 +1342,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // Make canvas transparent by default
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Add CSS class for transparency background
-        // canvas.classList.add('transparent-bg');
-
         let drawing = false;
         let currentButton = null;
 
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0 || e.button === 2) { // Left or right click
-                drawing = true;
-                currentButton = e.button;
-                draw(e);
-            }
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (drawing) {
-                draw(e);
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            drawing = false;
-            currentButton = null;
-            ctx.beginPath();
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-            drawing = false;
-            currentButton = null;
-            ctx.beginPath();
-        });
-
-        // Prevent the context menu from appearing on right-click
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
+        // Helper function to get canvas coordinates from both mouse and touch events
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: Math.floor((clientX - rect.left) / scaleFactor),
+                y: Math.floor((clientY - rect.top) / scaleFactor)
+            };
+        }
 
         function draw(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / scaleFactor);
-            const y = Math.floor((e.clientY - rect.top) / scaleFactor);
+            const coords = getCanvasCoordinates(e);
+            const x = coords.x;
+            const y = coords.y;
+
+            // Ensure coordinates are within canvas bounds
+            if (x < 0 || x >= pixelSize || y < 0 || y >= pixelSize) return;
 
             if (canvasId === 'mono-canvas') {
                 // For monochrome canvas, toggle pixel state
@@ -1306,6 +1401,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillRect(x * scaleFactor, y * scaleFactor, scaleFactor, scaleFactor);
             }
         }
+
+        // Mouse event listeners
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 || e.button === 2) {
+                drawing = true;
+                currentButton = e.button;
+                draw(e);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawing) draw(e);
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        // Touch event listeners
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling while drawing
+            drawing = true;
+            currentButton = 0; // Default to primary color for touch
+            draw(e);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (drawing) draw(e);
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            drawing = false;
+            currentButton = null;
+            ctx.beginPath();
+        });
+
+        // Prevent context menu on right-click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
     }
 
     updateColorIndicators();
@@ -1537,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     parseVMSFile(vmsData);
                 };
                 reader.readAsArrayBuffer(file);
-            } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+            } else if (['bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
                 // Handle image file - process both color and mono
                 const reader = new FileReader();
                 reader.onload = function(e) {

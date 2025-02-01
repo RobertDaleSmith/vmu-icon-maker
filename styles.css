@@ -1,13 +1,3 @@
-#dreamcast-background {
-  position: absolute;
-  top: 80px;
-  left: 0;
-  width: 100%;
-  height: calc(100vh - 80px);
-  z-index: -1;
-  overflow: hidden;
-}
-
 /* Update your existing html style to remove the background image */
 html {
   /* Remove or comment out the background-image property */
@@ -22,6 +12,7 @@ html {
 body * {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
+
 body {
   text-align: center;
   margin: 0;
@@ -29,43 +20,76 @@ body {
   background: linear-gradient(to bottom, #9cc3dc, #4d639c);
   min-height: 100vh;  /* Ensure gradient fills entire viewport */
 }
+
+#dreamcast-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+}
+
 #head-area {
-  margin: 0;
+  display: flex;
+  align-items: end;
+  height: 70px;
+  padding: 8px 32px;
+  box-sizing: border-box;
   background-color: #cac8ca;
   color: #3e3c3c;
   text-align: left;
-  
-  display: flex;
-  align-items: end;
-  height: 80px;
-  padding: 8px 32px;
-  box-sizing: border-box;
+  margin: 0;
   margin-bottom: 16px;
+  font-weight: 500;
 }
+
 #head-area h1 {
   flex: 1;
   margin: 0;
   padding: 0;
   font-weight: 300;
+  line-height: 26px;
 }
+
 #clock {
-  font-weight: 500;
   font-size: 22px;
   letter-spacing: 4px;
 }
+
+@media (max-width: 768px) {
+  #head-area {
+    height: 60px;
+    padding: 8px 16px;
+  }
+
+  #head-area h1 {
+    font-size: 22px;
+    line-height: 22px;
+  }
+
+  #clock {
+    font-size: 15px;
+  }
+}
+
 #open-area {
   margin-bottom: 16px;
 }
+
 #color-area, #mono-area, #generate-area {
   display: inline-flex;
   flex-direction: column;
   margin-bottom: 16px;
 }
+
 #palette-area {
   display: flex;
   flex-direction: row;
   margin-top: 10px;
 }
+
 #color-indicators {
   display: flex;
   position: relative;
@@ -73,29 +97,35 @@ body {
   height: 32px;
   width: 32px;
 }
+
 .color-indicator {
   width: 20px;
   height: 20px;
   border: 1px solid #000;
 }
+
 #primary-color-indicator {
   position: absolute;
   left: 0px;
   top: 0px;
 }
+
 #secondary-color-indicator {
   position: absolute;
   left: 10px;
   top: 10px;
 }
+
 #color-palette {
   display: grid;
   grid-template-columns: repeat(8, 20px);
   gap: 0px 2px;
 }
+
 #color-file, #vms-file, #save-button, #mono-file {
   display: none; /* Hide the default file input and button */
 }
+
 #color-preview-container {
   display: flex;
   flex-direction: row;
@@ -104,9 +134,11 @@ body {
   gap: 12px;
   margin: 12px 0;
 }
+
 #hue-slider {
   border-radius: 2px;
 }
+
 .button {
   display: inline-block;
   padding: 12px;
@@ -117,10 +149,12 @@ body {
   border: 1px solid #007bff;
   text-align: center;
 }
+
 .button:hover {
   background-color: #0056b3;
   border-color: #0056b3;
 }
+
 .image-file-upload {
   display: inline-block;
   padding: 2px 8px;
@@ -134,10 +168,12 @@ body {
   line-height: 17px;
   height: 20px;
 }
+
 .image-file-upload:active {
   border-color: #0056b3;
   color: #0056b3;
 }
+
 .inline-container {
   display: flex;
   align-items: center;
@@ -150,6 +186,7 @@ body {
       text-align: left;
   }
 }
+
 input#description {
   margin-top: 8px;
   line-height: 32px;
@@ -212,6 +249,7 @@ input#description {
   background-color: red;
   margin: 50px;
 }
+
 #color-picker-inputs {
   display: flex;
   flex-direction: row;
@@ -219,6 +257,7 @@ input#description {
   justify-content: center;
   gap: 10px;
 }
+
 .color-picker-input {
   width: 40px;
   height: 30px;
@@ -230,10 +269,10 @@ input#description {
   -webkit-appearance: none;
   margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
 }
-
 .color-picker-input[type=number] {
   -moz-appearance:textfield; /* Firefox */
 }
+
 #color-picker-labels {
   display: flex;
   flex-direction: row;
@@ -241,6 +280,7 @@ input#description {
   justify-content: center;
   gap: 10px;
 }
+
 .color-picker-label {
   width: 40px;
   margin: 2px;
