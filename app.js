@@ -1345,8 +1345,6 @@ function check3DModeSequence(vmsData) {
 
 // Initialize the color indicators and both canvases
 document.addEventListener('DOMContentLoaded', () => {
-    // const vmsUploadLabel = document.querySelector('label[for="unified-file"]');
-
     redInput = document.getElementById('red');
     greenInput = document.getElementById('green');
     blueInput = document.getElementById('blue');

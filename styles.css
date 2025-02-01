@@ -82,6 +82,7 @@ body {
   display: inline-flex;
   flex-direction: column;
   margin-bottom: 16px;
+  width: 258px;
 }
 
 .palette-area {
@@ -93,7 +94,7 @@ body {
 #color-indicators {
   display: flex;
   position: relative;
-  margin: 6px 18px;
+  margin: 6px 16px;
   height: 32px;
   width: 32px;
 }
@@ -102,6 +103,7 @@ body {
   width: 20px;
   height: 20px;
   border: 1px solid #000;
+  cursor: nwse-resize;
 }
 
 #primary-color-indicator {
@@ -255,11 +257,13 @@ input#description {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 8px;
 }
 
 .color-picker-input {
-  width: 40px;
+  flex: 1;
+  width: auto;
   height: 30px;
   text-align: center;
 }
@@ -375,10 +379,10 @@ input#description {
 #mono-color-indicators {
     display: flex;
     position: relative;
-    margin: 6px 18px;
+    margin: 6px 16px;
     height: 32px;
     width: 32px;
-    cursor: pointer;
+    cursor: nwse-resize;
 }
 
 #mono-primary-color-indicator {
@@ -393,4 +397,26 @@ input#description {
     left: 10px;
     top: 10px;
     border: 1px solid #000;
+}
+
+/* Add these styles */
+.canvas-container {
+    position: relative;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#mono-canvas, #color-canvas {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
