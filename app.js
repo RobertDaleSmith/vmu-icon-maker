@@ -2036,8 +2036,27 @@ function displayMonoPalette() {
         toggleDiv.style.backgroundColor = 'transparent';
         toggleDiv.id = 'mono-palette-item-index-' + index;
 
-        if (monoPaletteStates[index]) {
-            // Create inner square with margin
+        // Determine the state: off, partial-on, or on
+        let onCount = 0;
+        let totalCount = 0;
+
+        for (let i = 0; i < storedPaletteIndices.length; i++) {
+            if (storedPaletteIndices[i] === index) {
+                totalCount++;
+                if (monoPixelStates[i]) {
+                    onCount++;
+                }
+            }
+        }
+
+        if (totalCount === 0) {
+            // Off: No pixels line up
+            toggleDiv.style.backgroundColor = 'transparent';
+        } else if (onCount === totalCount) {
+            // On: All pixels line up
+            toggleDiv.style.backgroundColor = '#1d4781';
+        } else if (onCount > 0) {
+            // Partial-On: Some pixels line up
             const innerSquare = document.createElement('div');
             innerSquare.style.position = 'absolute';
             innerSquare.style.top = `${margin}px`;
