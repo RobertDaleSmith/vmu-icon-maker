@@ -82,26 +82,28 @@ body {
   display: inline-flex;
   flex-direction: column;
   margin-bottom: 16px;
-  width: 258px;
+  width: 322px;
 }
 
 .palette-area {
   display: flex;
   flex-direction: row;
   margin-top: 10px;
+  justify-content: center;
+  align-items: center;
 }
 
-#color-indicators {
+#color-indicators, #mono-color-indicators {
   display: flex;
   position: relative;
-  margin: 6px 16px;
-  height: 32px;
-  width: 32px;
+  margin-right: 16px;
+  height: 36px;
+  width: 36px;
 }
 
 .color-indicator {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border: 1px solid #000;
   cursor: nwse-resize;
 }
@@ -120,7 +122,7 @@ body {
 
 #color-palette {
   display: grid;
-  grid-template-columns: repeat(8, 20px);
+  grid-template-columns: repeat(8, 24px);
   gap: 0px 2px;
 }
 
@@ -374,15 +376,6 @@ input#description {
 
 #3d-mode-toggle {
     cursor: pointer;
-}
-
-#mono-color-indicators {
-    display: flex;
-    position: relative;
-    margin: 6px 16px;
-    height: 32px;
-    width: 32px;
-    cursor: nwse-resize;
 }
 
 #mono-primary-color-indicator {

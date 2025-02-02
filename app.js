@@ -1,4 +1,4 @@
-const scaleFactor = 8; // Scale factor for enlarging each pixel
+const scaleFactor = 10; // Scale factor for enlarging each pixel
 
 // Global variable to store palette indices
 let storedPaletteIndices = new Array(32 * 32).fill(1);
@@ -426,7 +426,7 @@ function displayColorPalette(palette) {
     const paletteContainer = document.getElementById('color-palette');
     paletteContainer.innerHTML = ''; // Clear previous palette
 
-    const squareSize = 20; // Size of each color square
+    const squareSize = 24; // Size of each color square
     const columns = 8; // Number of columns in the grid
     const gap = '0 2'; // Gap between squares
 
@@ -776,50 +776,91 @@ function processMonoImage(img) {
 }
 
 function createBMPData(imageData) {
+    // Calculate file size including the color masks
+    const headerSize = 14;        // Bitmap file header
+    const dibSize = 56;           // Extended DIB header for BITFIELDS (includes masks)
+    const rowSize = 32 * 4;       // 32 pixels * 4 bytes per pixel
+    const pixelDataSize = rowSize * 32;  // 32 rows
+    // Remove maskSize here:
+    const fileSize = headerSize + dibSize + pixelDataSize;
+    const pixelDataOffset = headerSize + dibSize;
+
     // BMP file header (14 bytes)
     const fileHeader = new Uint8Array([
         0x42, 0x4D,             // Signature 'BM'
-        0x3E, 0x04, 0x00, 0x00, // File size (1086 bytes = 14 + 40 + 32*32*4)
+        fileSize & 0xFF,        // File size (little-endian)
+        (fileSize >> 8) & 0xFF,
+        (fileSize >> 16) & 0xFF,
+        (fileSize >> 24) & 0xFF,
         0x00, 0x00,             // Reserved
         0x00, 0x00,             // Reserved
-        0x36, 0x00, 0x00, 0x00  // Offset to pixel data
+        pixelDataOffset & 0xFF, // Offset to pixel data (little-endian)
+        (pixelDataOffset >> 8) & 0xFF,
+        (pixelDataOffset >> 16) & 0xFF,
+        (pixelDataOffset >> 24) & 0xFF
     ]);
 
-    // DIB header (40 bytes)
+    // DIB header with BITFIELDS (56 bytes)
     const dibHeader = new Uint8Array([
-        0x28, 0x00, 0x00, 0x00, // DIB header size
+        0x38, 0x00, 0x00, 0x00, // DIB header size (56)
         0x20, 0x00, 0x00, 0x00, // Width (32)
         0x20, 0x00, 0x00, 0x00, // Height (32)
         0x01, 0x00,             // Color planes
         0x20, 0x00,             // Bits per pixel (32)
-        0x00, 0x00, 0x00, 0x00, // No compression
-        0x00, 0x00, 0x00, 0x00, // Image size (can be 0 for uncompressed)
+        0x03, 0x00, 0x00, 0x00, // BI_BITFIELDS compression
+        pixelDataSize & 0xFF,   // Image size
+        (pixelDataSize >> 8) & 0xFF,
+        (pixelDataSize >> 16) & 0xFF,
+        (pixelDataSize >> 24) & 0xFF,
         0x00, 0x00, 0x00, 0x00, // X pixels per meter
         0x00, 0x00, 0x00, 0x00, // Y pixels per meter
         0x00, 0x00, 0x00, 0x00, // Total colors
-        0x00, 0x00, 0x00, 0x00  // Important colors
+        0x00, 0x00, 0x00, 0x00, // Important colors
+        0x00, 0x00, 0xFF, 0x00, // Blue channel mask  (0x00FF0000)
+        0x00, 0xFF, 0x00, 0x00, // Green channel mask (0x0000FF00)
+        0xFF, 0x00, 0x00, 0x00, // Red channel mask   (0x000000FF)
+        0x00, 0x00, 0x00, 0xFF  // Alpha channel mask (0xFF000000)
     ]);
 
-    // Create pixel data array (32*32*4 bytes)
-    const pixelData = new Uint8Array(32 * 32 * 4);
-    let pixelOffset = 0;
+    // Create pixel data array
+    const pixelData = new Uint8Array(pixelDataSize);
 
-    // BMP stores pixels bottom-to-top, left-to-right, BGR format
-    for (let y = 31; y >= 0; y--) {
+    // First, let's log the source data for the problematic pixels
+    for (let y = 28; y < 32; y++) {
+        console.log(`Source pixel at (0,${y}):`, 
+            imageData.data[(y * 32 + 0) * 4],     // R
+            imageData.data[(y * 32 + 0) * 4 + 1], // G
+            imageData.data[(y * 32 + 0) * 4 + 2], // B
+            imageData.data[(y * 32 + 0) * 4 + 3]  // A
+        );
+    }
+
+    for (let y = 0; y < 32; y++) {
         for (let x = 0; x < 32; x++) {
             const srcOffset = (y * 32 + x) * 4;
-            pixelData[pixelOffset++] = imageData.data[srcOffset + 2]; // B
-            pixelData[pixelOffset++] = imageData.data[srcOffset + 1]; // G
-            pixelData[pixelOffset++] = imageData.data[srcOffset];     // R
-            pixelData[pixelOffset++] = imageData.data[srcOffset + 3]; // A
+            // Translate the image: add 4 to the x coordinate
+            const newX = x;
+            const newY = 31 - y;  // still flip vertically for BMP
+        
+            // Only copy if the new position is within bounds.
+            if (newX < 32) {
+                const dstOffset = (newY * rowSize) + (newX * 4);
+                pixelData[dstOffset]     = imageData.data[srcOffset + 2]; // B
+                pixelData[dstOffset + 1] = imageData.data[srcOffset + 1]; // G
+                pixelData[dstOffset + 2] = imageData.data[srcOffset];     // R
+                pixelData[dstOffset + 3] = imageData.data[srcOffset + 3]; // A
+            }
         }
     }
 
     // Combine all parts into final BMP file
-    const bmpData = new Uint8Array(fileHeader.length + dibHeader.length + pixelData.length);
-    bmpData.set(fileHeader, 0);
-    bmpData.set(dibHeader, fileHeader.length);
-    bmpData.set(pixelData, fileHeader.length + dibHeader.length);
+    const bmpData = new Uint8Array(fileSize);
+    let offset = 0;
+    bmpData.set(fileHeader, offset);
+    offset += fileHeader.length;
+    bmpData.set(dibHeader, offset);
+    offset += dibHeader.length;
+    bmpData.set(pixelData, offset);
 
     return bmpData;
 }
@@ -1865,7 +1906,7 @@ function displayMonoPalette() {
     const paletteContainer = document.getElementById('mono-palette');
     paletteContainer.innerHTML = ''; // Clear previous palette
 
-    const squareSize = 20; // Match color palette size
+    const squareSize = 24; // Match color palette size
     const columns = 8;
     const gap = '0 2';
     const margin = 4; // 2px margin for the inner square
