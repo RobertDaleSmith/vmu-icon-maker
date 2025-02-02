@@ -865,34 +865,136 @@ function createBMPData(imageData) {
     return bmpData;
 }
 
-function createPreviewGif() {
-    return new Promise((resolve, reject) => {
-        // Create canvases for both frames
-        const frame1 = document.getElementById('color-canvas');
+/**
+ * Create a GIF Blob from a 32x32 image given a palette and pixel data.
+ * - width, height: dimensions (should be 32)
+ * - palette: an array of 16 {r, g, b, a} objects (the 16th is assumed transparent)
+ * - pixelIndices: an array of width*height numbers (each 0–15)
+ */
+function createGIFData(pixelIndices, palette) {
+    const width = 32;
+    const height = 32;
+    let bytes = [];
 
-        gifshot.createGIF({
-            images: [frame1.toDataURL()],
-            gifWidth: 32,
-            gifHeight: 32,
-            interval: 1.0, // 1 second between frames
-            numFrames: 2,
-            frameDuration: 1,
-            sampleInterval: 1,
-            numWorkers: 1
-        }, function(obj) {
-            if(!obj.error) {
-                // Convert base64 to Uint8Array
-                const binaryString = window.atob(obj.image.split(',')[1]);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                resolve(bytes);
-            } else {
-                reject(obj.error);
-            }
-        });
-    });
+    // --- GIF Header ("GIF89a") ---
+    bytes.push(0x47, 0x49, 0x46, 0x38, 0x39, 0x61);
+
+    // --- Logical Screen Descriptor ---
+    // Width & Height in little-endian order.
+    bytes.push(width & 0xFF, (width >> 8) & 0xFF);
+    bytes.push(height & 0xFF, (height >> 8) & 0xFF);
+    // Packed Field:
+    //   Global Color Table Flag = 1 (bit 7)
+    //   Color Resolution = 7 (bits 4–6: meaning 8 bits per primary color)
+    //   Sort Flag = 0 (bit 3)
+    //   Size of Global Color Table = 3 (bits 0–2: 2^(3+1)=16 colors)
+    let packed = (1 << 7) | (7 << 4) | (3);
+    bytes.push(packed);
+    // Background Color Index (0) and Pixel Aspect Ratio (0)
+    bytes.push(0, 0);
+
+    // --- Global Color Table (16 entries, 3 bytes each) ---
+    for (let i = 0; i < 16; i++) {
+        if (i < palette.length) {
+            bytes.push(palette[i].r, palette[i].g, palette[i].b);
+        } else {
+        // Pad if needed.
+            bytes.push(0, 0, 0);
+        }
+    }
+
+    // --- Graphic Control Extension (for transparency) ---
+    // This block indicates that palette index 15 is transparent.
+    bytes.push(0x21, 0xF9, 0x04);
+    // Packed Field: transparency flag on (bit0=1), disposal method = 0.
+    bytes.push(0x01);
+    // Delay Time (2 bytes = 0) and Transparent Color Index = 15, Block Terminator.
+    bytes.push(0, 0, 15, 0);
+
+    // --- Image Descriptor ---
+    bytes.push(0x2C); // Image Separator.
+    // Image Left and Top (0,0)
+    bytes.push(0, 0, 0, 0);
+    // Image Width & Height (little-endian)
+    bytes.push(width & 0xFF, (width >> 8) & 0xFF);
+    bytes.push(height & 0xFF, (height >> 8) & 0xFF);
+    // Packed Field: no local color table, not interlaced.
+    bytes.push(0);
+
+    // --- Image Data ---
+    // LZW Minimum Code Size – for 16 colors use 4.
+    const lzwMinCodeSize = 4;
+    bytes.push(lzwMinCodeSize);
+
+    // Use our “brute force” LZW encoder that outputs a clear code before each pixel.
+    const lzwData = lzwEncodeNoCompression(pixelIndices, lzwMinCodeSize);
+
+    // Package the LZW data into sub-blocks (each block is at most 255 bytes).
+    let offset = 0;
+    while (offset < lzwData.length) {
+        const blockSize = Math.min(255, lzwData.length - offset);
+        bytes.push(blockSize);
+        for (let i = 0; i < blockSize; i++) {
+            bytes.push(lzwData[offset + i]);
+        }
+        offset += blockSize;
+    }
+    // Block Terminator for image data.
+    bytes.push(0);
+
+    // --- GIF Trailer ---
+    bytes.push(0x3B);
+
+    // Create and return the Blob.
+    const byteArray = new Uint8Array(bytes);
+    return new Blob([byteArray], { type: "image/gif" });
+}
+
+/**
+ * A “no‐compression” LZW encoder.
+ *
+ * This function writes a clear code, then for each pixel it writes:
+ *   (clear code, then the pixel’s palette index)
+ * and finally writes the End‐of‐Information (EOI) code.
+ *
+ * This forces the decoder to output each pixel literally.
+ *
+ * @param {Array<number>} data - Array of palette indices (0–15), expected length = width*height.
+ * @param {number} minCodeSize - LZW minimum code size (4 for 16-color images).
+ * @returns {Array<number>} - The “LZW‐compressed” data.
+ */
+function lzwEncodeNoCompression(data, minCodeSize) {
+    const clearCode = 1 << minCodeSize; // For minCodeSize=4, clearCode = 16.
+    const eoiCode = clearCode + 1;       // eoiCode = 17.
+    const codeSize = minCodeSize + 1;      // Fixed code size = 5 bits.
+    let output = [];
+    let bitBuffer = 0;
+    let bitCount = 0;
+
+    // Helper function to write a code in codeSize bits into the bit stream.
+    function writeCode(code) {
+        bitBuffer |= code << bitCount;
+        bitCount += codeSize;
+        while (bitCount >= 8) {
+            output.push(bitBuffer & 0xFF);
+            bitBuffer >>= 8;
+            bitCount -= 8;
+        }
+    }
+
+    // For every pixel, output a clear code then the pixel's value.
+    for (let i = 0; i < data.length; i++) {
+        writeCode(clearCode);
+        writeCode(data[i]);
+    }
+    // Write the End Of Information code.
+    writeCode(eoiCode);
+
+    // Flush any remaining bits.
+    if (bitCount > 0) {
+        output.push(bitBuffer & 0xFF);
+    }
+    return output;
 }
 
 async function saveVMSVMI() {
@@ -905,10 +1007,9 @@ async function saveVMSVMI() {
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
     const vmiData = createVMIData(description);
     const bmpData = createBMPData(getOriginalImageData('color-canvas'));
+    const gifData = createGIFData(storedPaletteIndices, currentPalette);
 
     try {
-        const gifData = await createPreviewGif();
-
         // Create a new ZIP file
         const zip = new JSZip();
 
