@@ -775,13 +775,12 @@ function processMonoImage(img) {
     updateMonoPaletteStates();
 }
 
-function createBMPData(imageData) {
+function createBMPData(pixelIndices, palette) {
     // Calculate file size including the color masks
     const headerSize = 14;        // Bitmap file header
     const dibSize = 56;           // Extended DIB header for BITFIELDS (includes masks)
     const rowSize = 32 * 4;       // 32 pixels * 4 bytes per pixel
     const pixelDataSize = rowSize * 32;  // 32 rows
-    // Remove maskSize here:
     const fileSize = headerSize + dibSize + pixelDataSize;
     const pixelDataOffset = headerSize + dibSize;
 
@@ -825,31 +824,20 @@ function createBMPData(imageData) {
     // Create pixel data array
     const pixelData = new Uint8Array(pixelDataSize);
 
-    // First, let's log the source data for the problematic pixels
-    for (let y = 28; y < 32; y++) {
-        console.log(`Source pixel at (0,${y}):`, 
-            imageData.data[(y * 32 + 0) * 4],     // R
-            imageData.data[(y * 32 + 0) * 4 + 1], // G
-            imageData.data[(y * 32 + 0) * 4 + 2], // B
-            imageData.data[(y * 32 + 0) * 4 + 3]  // A
-        );
-    }
-
     for (let y = 0; y < 32; y++) {
         for (let x = 0; x < 32; x++) {
-            const srcOffset = (y * 32 + x) * 4;
-            // Translate the image: add 4 to the x coordinate
+            const index = y * 32 + x;
+            const paletteIndex = pixelIndices[index];
+            const color = palette[paletteIndex];
+
             const newX = x;
-            const newY = 31 - y;  // still flip vertically for BMP
-        
-            // Only copy if the new position is within bounds.
-            if (newX < 32) {
-                const dstOffset = (newY * rowSize) + (newX * 4);
-                pixelData[dstOffset]     = imageData.data[srcOffset + 2]; // B
-                pixelData[dstOffset + 1] = imageData.data[srcOffset + 1]; // G
-                pixelData[dstOffset + 2] = imageData.data[srcOffset];     // R
-                pixelData[dstOffset + 3] = imageData.data[srcOffset + 3]; // A
-            }
+            const newY = 31 - y;  // Flip vertically for BMP
+
+            const dstOffset = (newY * rowSize) + (newX * 4);
+            pixelData[dstOffset]     = color.b; // B
+            pixelData[dstOffset + 1] = color.g; // G
+            pixelData[dstOffset + 2] = color.r; // R
+            pixelData[dstOffset + 3] = color.a; // A
         }
     }
 
@@ -926,7 +914,7 @@ function createGIFData(pixelIndices, palette) {
     const lzwMinCodeSize = 4;
     bytes.push(lzwMinCodeSize);
 
-    // Use our “brute force” LZW encoder that outputs a clear code before each pixel.
+    // Use our "brute force" LZW encoder that outputs a clear code before each pixel.
     const lzwData = lzwEncodeNoCompression(pixelIndices, lzwMinCodeSize);
 
     // Package the LZW data into sub-blocks (each block is at most 255 bytes).
@@ -951,17 +939,17 @@ function createGIFData(pixelIndices, palette) {
 }
 
 /**
- * A “no‐compression” LZW encoder.
+ * A "no-compression" LZW encoder.
  *
  * This function writes a clear code, then for each pixel it writes:
- *   (clear code, then the pixel’s palette index)
- * and finally writes the End‐of‐Information (EOI) code.
+ *   (clear code, then the pixel's palette index)
+ * and finally writes the End-of-Information (EOI) code.
  *
  * This forces the decoder to output each pixel literally.
  *
  * @param {Array<number>} data - Array of palette indices (0–15), expected length = width*height.
  * @param {number} minCodeSize - LZW minimum code size (4 for 16-color images).
- * @returns {Array<number>} - The “LZW‐compressed” data.
+ * @returns {Array<number>} - The "LZW-compressed" data.
  */
 function lzwEncodeNoCompression(data, minCodeSize) {
     const clearCode = 1 << minCodeSize; // For minCodeSize=4, clearCode = 16.
@@ -1006,7 +994,7 @@ async function saveVMSVMI() {
 
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
     const vmiData = createVMIData(description);
-    const bmpData = createBMPData(getOriginalImageData('color-canvas'));
+    const bmpData = createBMPData(storedPaletteIndices, currentPalette);
     const gifData = createGIFData(storedPaletteIndices, currentPalette);
 
     try {
