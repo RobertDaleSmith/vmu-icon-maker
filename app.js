@@ -853,6 +853,20 @@ function createBMPData(pixelIndices, palette) {
     return bmpData;
 }
 
+function createMonoBMPData(monoPixelStates) {
+    // Define a monochrome palette: black for "on" and white for "off"
+    const monoPalette = [
+        { r: 0, g: 0, b: 0, a: 255 },   // Black
+        { r: 255, g: 255, b: 255, a: 255 } // White
+    ];
+
+    // Convert monoPixelStates to pixelIndices
+    const pixelIndices = monoPixelStates.map(isOn => isOn ? 0 : 1);
+
+    // Use the existing createBMPData function to generate the BMP data
+    return createBMPData(pixelIndices, monoPalette);
+}
+
 /**
  * Create a GIF Blob from a 32x32 image given a palette and pixel data.
  * - width, height: dimensions (should be 32)
@@ -994,8 +1008,9 @@ async function saveVMSVMI() {
 
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
     const vmiData = createVMIData(description);
-    const bmpData = createBMPData(storedPaletteIndices, currentPalette);
     const gifData = createGIFData(storedPaletteIndices, currentPalette);
+    const bmpData = createBMPData(storedPaletteIndices, currentPalette);
+    const monoBMPData = createMonoBMPData(monoPixelStates);
 
     try {
         // Create a new ZIP file
@@ -1005,6 +1020,7 @@ async function saveVMSVMI() {
         zip.file(`ICONDATA.VMS`, vmsData);
         zip.file(`ICONDATA.VMI`, vmiData);
         zip.file(`color.bmp`, bmpData);
+        zip.file(`mono.bmp`, monoBMPData);
         zip.file(`preview.gif`, gifData);
 
         // Generate the ZIP file
