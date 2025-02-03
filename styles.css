@@ -205,9 +205,8 @@ body {
   height: 20px;
 }
 
-.image-file-upload:active {
-  border-color: #0056b3;
-  color: #0056b3;
+.image-file-upload:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .inline-container {
@@ -228,7 +227,7 @@ input#description {
   border: 1px solid #000;
   border-radius: 4px;
   text-align: center;
-  width: 252px;
+  flex: 1;
 }
 
 #color-preview {

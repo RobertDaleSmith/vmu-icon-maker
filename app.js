@@ -2175,3 +2175,37 @@ function updateMonoColorIndicators() {
         secondaryIndicator.style.boxShadow = 'none';
     }
 }
+
+function invertMonoStates() {
+    // Invert each pixel state
+    for (let i = 0; i < monoPixelStates.length; i++) {
+        monoPixelStates[i] = !monoPixelStates[i];
+    }
+
+    // Redraw the mono canvas
+    const canvas = document.getElementById('mono-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw updated mono pixels
+    for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 32; x++) {
+            const index = y * 32 + x;
+            if (monoPixelStates[index]) {
+                ctx.fillStyle = '#1d4781';
+                ctx.fillRect(
+                    x * scaleFactor + 1,
+                    y * scaleFactor + 1,
+                    scaleFactor - 1,
+                    scaleFactor - 1
+                );
+            }
+        }
+    }
+
+    // Update mono palette display
+    displayMonoPalette();
+}
+
+// Add event listener to the button
+document.getElementById('invert-mono-button').addEventListener('click', invertMonoStates);
