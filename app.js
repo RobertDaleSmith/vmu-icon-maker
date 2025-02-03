@@ -428,16 +428,19 @@ function displayColorPalette(palette) {
 
     const squareSize = 24; // Size of each color square
     const columns = 8; // Number of columns in the grid
-    const gap = '0 2'; // Gap between squares
+    const gap = '0 0'; // Gap between squares
+    const borderSize = 1;
 
     // Calculate the total width of the palette container
     const totalWidth = columns * (squareSize + gap) - gap; // Subtract the last gap
 
     // Set the palette container to display as a grid
     paletteContainer.style.display = 'grid';
-    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize}px)`;
+    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize+(borderSize*2)}px)`;
     paletteContainer.style.gap = `${gap}px`;
-    paletteContainer.style.width = `${totalWidth}px`; // Set the calculated width
+    paletteContainer.style.width = `${totalWidth}px`;
+    paletteContainer.style.border = `${borderSize}px solid #000`;
+    paletteContainer.style.borderRadius = '2px';
 
     palette.forEach((color, index) => {
         const colorDiv = document.createElement('div');
@@ -445,7 +448,7 @@ function displayColorPalette(palette) {
         colorDiv.style.height = `${squareSize}px`;
         colorDiv.style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
         colorDiv.style.cursor = 'pointer';
-        colorDiv.style.border = '1px solid #ccc'; // Optional: Add a border for better visibility
+        colorDiv.style.border = '1px solid #000'; // Optional: Add a border for better visibility
         colorDiv.style.position = 'relative'; // Position relative to allow absolute positioning of the input
         colorDiv.id = 'color-palette-item-index-' + index;
 
@@ -2013,27 +2016,30 @@ function displayMonoPalette() {
 
     const squareSize = 24; // Match color palette size
     const columns = 8;
-    const gap = '0 2';
-    const margin = 4; // 2px margin for the inner square
+    const gap = '0 0';
+    const borderSize = 1;
+    const margin = 5; // 5px margin for the inner square
 
     // Calculate the total width of the palette container
     const totalWidth = columns * (squareSize + gap) - gap;
 
     // Set the palette container to display as a grid
     paletteContainer.style.display = 'grid';
-    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize}px)`;
+    paletteContainer.style.gridTemplateColumns = `repeat(${columns}, ${squareSize + (borderSize * 2)}px)`;
     paletteContainer.style.gap = `${gap}px`;
     paletteContainer.style.width = `${totalWidth}px`;
+    paletteContainer.style.border = `${borderSize}px solid #000`;
+    paletteContainer.style.borderRadius = '2px';
 
     // Create squares for each palette index
     for (let index = 0; index < 16; index++) {
         const toggleDiv = document.createElement('div');
         toggleDiv.style.width = `${squareSize}px`;
         toggleDiv.style.height = `${squareSize}px`;
-        toggleDiv.style.border = '1px solid #ccc';
+        toggleDiv.style.border = '1px solid #000';
         toggleDiv.style.cursor = 'pointer';
         toggleDiv.style.position = 'relative'; // For absolute positioning of inner square
-        toggleDiv.style.backgroundColor = 'transparent';
+        toggleDiv.style.background = 'linear-gradient(to bottom, #8af8db, #68a38f)';
         toggleDiv.id = 'mono-palette-item-index-' + index;
 
         // Determine the state: off, partial-on, or on
@@ -2049,23 +2055,29 @@ function displayMonoPalette() {
             }
         }
 
-        if (totalCount === 0) {
-            // Off: No pixels line up
-            toggleDiv.style.backgroundColor = 'transparent';
-        } else if (onCount === totalCount) {
-            // On: All pixels line up
-            toggleDiv.style.backgroundColor = '#1d4781';
-        } else if (onCount > 0) {
-            // Partial-On: Some pixels line up
-            const innerSquare = document.createElement('div');
-            innerSquare.style.position = 'absolute';
-            innerSquare.style.top = `${margin}px`;
-            innerSquare.style.left = `${margin}px`;
-            innerSquare.style.width = `${squareSize - (margin * 2)}px`;
-            innerSquare.style.height = `${squareSize - (margin * 2)}px`;
+        const innerSquare = document.createElement('div');
+        innerSquare.style.position = 'absolute';
+        innerSquare.style.top = `${margin}px`;
+        innerSquare.style.left = `${margin}px`;
+        innerSquare.style.width = `${squareSize - (margin * 2)}px`;
+        innerSquare.style.height = `${squareSize - (margin * 2)}px`;
+
+        if (onCount === totalCount && totalCount > 0) {
+            // All On: Inner square is fully filled
             innerSquare.style.backgroundColor = '#1d4781';
-            toggleDiv.appendChild(innerSquare);
+            innerSquare.style.top = `1px`;
+            innerSquare.style.left = `1px`;
+            innerSquare.style.width = `${squareSize - 2}px`;
+            innerSquare.style.height = `${squareSize - 2}px`;
+        } else if (onCount > 0) {
+            // Partial On: Inner square is partially filled (e.g., with a pattern or lighter color)
+            innerSquare.style.backgroundColor = '#1d4781';
+        } else {
+            // All Off: No inner square or transparent
+            innerSquare.style.backgroundColor = 'transparent';
         }
+
+        toggleDiv.appendChild(innerSquare);
 
         toggleDiv.addEventListener('click', () => {
             toggleMonoPaletteIndex(index);
@@ -2144,6 +2156,22 @@ function updateMonoColorIndicators() {
     const primaryIndicator = document.getElementById('mono-primary-color-indicator');
     const secondaryIndicator = document.getElementById('mono-secondary-color-indicator');
 
-    primaryIndicator.style.backgroundColor = monoDrawPrimary ? '#1d4781' : 'transparent';
-    secondaryIndicator.style.backgroundColor = monoDrawSecondary ? '#1d4781' : 'transparent';
+    // Set the base background to the gradient
+    primaryIndicator.style.background = 'linear-gradient(to bottom, #8af8db, #68a38f)';
+    secondaryIndicator.style.background = 'linear-gradient(to bottom, #8af8db, #68a38f)';
+
+    // Add a smaller square if true
+    if (monoDrawPrimary) {
+        primaryIndicator.style.background = '#1d4781';
+        primaryIndicator.style.boxShadow = 'inset 0 0 0 1px #8af8db, inset 0 0 0 3px #1d4781';
+    } else {
+        primaryIndicator.style.boxShadow = 'none';
+    }
+
+    if (monoDrawSecondary) {
+        secondaryIndicator.style.background = '#1d4781';
+        secondaryIndicator.style.boxShadow = 'inset 0 0 0 1px #8af8db, inset 0 0 0 3px #1d4781';
+    } else {
+        secondaryIndicator.style.boxShadow = 'none';
+    }
 }

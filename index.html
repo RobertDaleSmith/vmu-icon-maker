@@ -29,29 +29,33 @@
                 <label for="color-file" class="image-file-upload">+</label>
                 <input type="file" id="color-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
-            <canvas id="color-canvas" width="256" height="256" class="transparent-bg" style="border: 1px solid #000;"></canvas>
+            <canvas id="color-canvas" width="320" height="320" class="transparent-bg"></canvas>
             <div class="palette-area">
                 <div id="color-indicators">
-                    <div id="secondary-color-indicator" class="color-indicator" style="background-color: rgb(255, 255, 255);"></div>
-                    <div id="primary-color-indicator" class="color-indicator" style="background-color: rgb(0, 0, 0);"></div>
+                    <div class="color-indicator">
+                        <span id="secondary-color-indicator" style="background-color: rgb(255, 255, 255);"></span>
+                    </div>
+                    <div class="color-indicator">
+                        <span id="primary-color-indicator" style="background-color: rgb(0, 0, 0);"></span>
+                    </div>
                 </div>
-                <div id="color-palette" style="display: grid; grid-template-columns: repeat(8, 24px); gap: 0px 2px;">
-                    <div style="background-color: rgb(0, 0, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(255, 255, 255); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(255, 0, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 255, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 0, 255); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(255, 255, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 255, 255); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(255, 0, 255); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(187, 187, 187); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(136, 136, 136); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(136, 0, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(136, 136, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 136, 0); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(136, 0, 136); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 136, 136); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
-                    <div style="background-color: rgb(0, 0, 136); width: 24px; height: 24px; cursor: pointer; border: 1px solid rgb(204, 204, 204);"></div>
+                <div id="color-palette" style="display: grid; grid-template-columns: repeat(8, 26px); gap: 0px; border: 1px solid rgb(0, 0, 0); border-radius: 2px;">
+                    <div id="color-palette-item-index-0" style="width: 24px; height: 24px; background-color: rgb(0, 0, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-1" style="width: 24px; height: 24px; background-color: rgb(255, 255, 255); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-2" style="width: 24px; height: 24px; background-color: rgb(255, 0, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-3" style="width: 24px; height: 24px; background-color: rgb(0, 255, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-4" style="width: 24px; height: 24px; background-color: rgb(0, 0, 255); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-5" style="width: 24px; height: 24px; background-color: rgb(255, 255, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-6" style="width: 24px; height: 24px; background-color: rgb(0, 255, 255); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-7" style="width: 24px; height: 24px; background-color: rgb(255, 0, 255); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-8" style="width: 24px; height: 24px; background-color: rgb(187, 187, 187); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-9" style="width: 24px; height: 24px; background-color: rgb(136, 136, 136); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-10" style="width: 24px; height: 24px; background-color: rgb(136, 0, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-11" style="width: 24px; height: 24px; background-color: rgb(136, 136, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-12" style="width: 24px; height: 24px; background-color: rgb(0, 136, 0); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-13" style="width: 24px; height: 24px; background-color: rgb(136, 0, 136); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-14" style="width: 24px; height: 24px; background-color: rgb(0, 136, 136); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
+                    <div id="color-palette-item-index-15" style="width: 24px; height: 24px; background-color: rgb(0, 0, 136); cursor: pointer; border: 1px solid rgb(0, 0, 0); position: relative;"><input type="color" data-alpha="ff" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0; pointer-events: none;"></div>
                 </div>
             </div>
         </div>
@@ -61,38 +65,38 @@
                 <label for="mono-file" class="image-file-upload">+</label>
                 <input type="file" id="mono-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
-            <canvas id="mono-canvas" width="256" height="256" style="border: 1px solid #000;"></canvas>
+            <canvas id="mono-canvas" width="320" height="320"></canvas>
             <div class="palette-area">
                 <div id="mono-color-indicators">
-                    <div id="mono-secondary-color-indicator" class="color-indicator"></div>
-                    <div id="mono-primary-color-indicator" class="color-indicator" style="background-color: rgb(29, 71, 129);"></div>
+                    <div id="mono-secondary-color-indicator" class="color-indicator" style="background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143)); box-shadow: none;"></div>
+                    <div id="mono-primary-color-indicator" class="color-indicator" style="background: rgb(29, 71, 129); box-shadow: rgb(138, 248, 219) 0px 0px 0px 1px inset, rgb(29, 71, 129) 0px 0px 0px 3px inset;"></div>
                 </div>
-                <div id="mono-palette" style="display: grid; grid-template-columns: repeat(8, 24px); gap: 0px 2px;">
-                    <div id="mono-palette-item-index-0" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-1" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-2" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-3" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-4" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-5" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-6" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-7" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-8" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-9" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-10" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-11" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-12" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-13" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-14" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
-                    <div id="mono-palette-item-index-15" style="width: 24px; height: 24px; border: 1px solid rgb(204, 204, 204); cursor: pointer; position: relative; background-color: transparent;"></div>
+                <div id="mono-palette" style="display: grid; grid-template-columns: repeat(8, 26px); gap: 0px; border: 1px solid rgb(0, 0, 0); border-radius: 2px;">
+                    <div id="mono-palette-item-index-0" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-1" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-2" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-3" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-4" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-5" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-6" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-7" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-8" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-9" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-10" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-11" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-12" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-13" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-14" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
+                    <div id="mono-palette-item-index-15" style="width: 24px; height: 24px; border: 1px solid rgb(0, 0, 0); cursor: pointer; position: relative; background: linear-gradient(rgb(138, 248, 219), rgb(104, 163, 143));"><div style="position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; background-color: transparent;"></div></div>
                 </div>
             </div>
         </div>
         <br>
         <div id="generate-area">
-            <div class="inline-container">
+            <!-- <div class="inline-container">
                 <h3>Options</h3>
-            </div>
-            <div>
+            </div> -->
+            <div class="option-container">
                 <label for="description" class="option-label">Description</label>
                 <input type="text" id="description" maxlength="16" placeholder="Description" value="ICONDATA_VMS">
             </div>

@@ -82,7 +82,7 @@ body {
   display: inline-flex;
   flex-direction: column;
   margin-bottom: 16px;
-  width: 322px;
+  width: 324px;
 }
 
 .palette-area {
@@ -97,15 +97,25 @@ body {
   display: flex;
   position: relative;
   margin-right: 16px;
-  height: 36px;
-  width: 36px;
+  height: 34px;
+  width: 34px;
 }
 
 .color-indicator {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #000;
+  width: 21px;
+  height: 21px;
+  border: 2px solid #000;
+  border-radius: 2px;
   cursor: nwse-resize;
+
+  background-image: 
+    linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+    linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0px;
+  background-color: #ffffff;
 }
 
 #primary-color-indicator {
@@ -114,16 +124,38 @@ body {
   top: 0px;
 }
 
-#secondary-color-indicator {
+#color-indicators .color-indicator:nth-child(2) {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+}
+
+#color-indicators .color-indicator:nth-child(1) {
   position: absolute;
   left: 10px;
   top: 10px;
+}
+
+#color-indicators .color-indicator span {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
 }
 
 #color-palette {
   display: grid;
   grid-template-columns: repeat(8, 24px);
   gap: 0px 2px;
+  background-image: 
+    linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+    linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+  background-color: #ffffff;
 }
 
 #color-file, #vms-file, #save-button, #mono-file {
@@ -192,7 +224,6 @@ body {
 }
 
 input#description {
-  margin-top: 8px;
   line-height: 32px;
   border: 1px solid #000;
   border-radius: 4px;
@@ -203,7 +234,9 @@ input#description {
 #color-preview {
   background-color: rgba(0, 0, 0, 1);
   border-radius: 50%;
-  width: 30px; height: 30px; border: 1px solid rgba(0, 0, 0, 0.2);
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 #color-sliders {
@@ -303,8 +336,8 @@ input#description {
     linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
     linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
   background-color: #ffffff;
 }
 
@@ -348,68 +381,72 @@ input#description {
 }
 
 .option-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 8px 0;
-    position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0;
+  position: relative;
 }
 
 .option-container .tooltip {
-    display: none;
-    position: absolute;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
+  display: none;
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
 }
 
 .option-container:hover .tooltip {
-    display: block;
+  display: block;
 }
 
 #3d-mode-toggle {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 #mono-primary-color-indicator {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    border: 1px solid #000;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  border: 2px solid #000;
+  border-radius: 2px;
 }
 
 #mono-secondary-color-indicator {
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    border: 1px solid #000;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  border: 2px solid #000;
+  border-radius: 2px;
 }
 
 /* Add these styles */
 .canvas-container {
-    position: relative;
-    touch-action: none;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+  position: relative;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 #mono-canvas, #color-canvas {
-    touch-action: none;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+  border: 2px solid #000;
+  border-radius: 2px;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
