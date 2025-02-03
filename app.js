@@ -561,7 +561,7 @@ function processColorImage(img) {
     r: Math.round((color.r / 255) * 15) * 17,
     g: Math.round((color.g / 255) * 15) * 17,
     b: Math.round((color.b / 255) * 15) * 17,
-    a: color.a // Keep alpha as is
+    a: Math.round((color.a / 255) * 15) * 17,
   }));
 
   // If transparent color was present, add it to the end of the palette
