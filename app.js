@@ -1034,6 +1034,9 @@ async function saveVMSVMI() {
         downloadLink.href = URL.createObjectURL(zipBlob);
         downloadLink.download = `VMU_ICONDATA_${description}.zip`;
 
+        // Save to history
+        saveIconToHistory(description, gifData, zipBlob, currentPalette, storedPaletteIndices, monoPixelStates);
+
         // Trigger the download
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -1897,6 +1900,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize mono color indicators
     updateMonoColorIndicators();
+
+    // Initialize icon history
+    renderIconHistory();
 });
 
 function rgbToHsb(r, g, b) {
@@ -2209,3 +2215,222 @@ function invertMonoStates() {
 
 // Add event listener to the button
 document.getElementById('invert-mono-button').addEventListener('click', invertMonoStates);
+
+let db;
+let dbReady = new Promise((resolve, reject) => {
+    const request = indexedDB.open('iconDatabase', 1);
+
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        const objectStore = db.createObjectStore('icons', { keyPath: 'id', autoIncrement: true });
+        objectStore.createIndex('description', 'description', { unique: false });
+    };
+
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        resolve();
+    };
+
+    request.onerror = function(event) {
+        console.error('Database error:', event.target.errorCode);
+        reject(event.target.errorCode);
+    };
+});
+
+function saveIconToHistory(description, gifData, zipData, currentPalette, storedPaletteIndices, monoPixelStates) {
+    dbReady.then(() => {
+        const transaction = db.transaction(['icons'], 'readwrite');
+        const objectStore = transaction.objectStore('icons');
+
+        const iconEntry = {
+            description: description,
+            gifData: gifData,
+            zipData: zipData,
+            currentPalette: currentPalette,
+            storedPaletteIndices: storedPaletteIndices,
+            monoPixelStates: monoPixelStates,
+            timestamp: Date.now() // Add a timestamp when saving
+        };
+
+        const request = objectStore.add(iconEntry);
+
+        request.onsuccess = function() {
+            console.log('Icon saved to history');
+            renderIconHistory();
+        };
+
+        request.onerror = function(event) {
+            console.error('Error saving icon:', event.target.errorCode);
+        };
+    }).catch(error => {
+        console.error('Failed to save icon:', error);
+    });
+}
+
+function renderIconHistory() {
+    dbReady.then(() => {
+        const historyList = document.getElementById('history-list');
+        const historyContainer = document.getElementById('history-container'); // Assuming this is the container
+
+        historyList.innerHTML = ''; // Clear existing history
+
+        const transaction = db.transaction(['icons'], 'readonly');
+        const objectStore = transaction.objectStore('icons');
+
+        const icons = [];
+
+        objectStore.openCursor().onsuccess = function(event) {
+            const cursor = event.target.result;
+            if (cursor) {
+                const icon = cursor.value;
+                icons.push(icon);
+                cursor.continue();
+            } else {
+                // Sort icons by timestamp in descending order
+                icons.sort((a, b) => b.timestamp - a.timestamp);
+
+                // Check if there are any icons to display
+                if (icons.length > 0) {
+                    historyContainer.style.display = 'block'; // Show the container
+                } else {
+                    historyContainer.style.display = 'none'; // Hide the container
+                }
+
+                // Render sorted icons
+                icons.forEach(icon => {
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'history-item';
+
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
+                    img.alt = 'Icon Preview';
+                    img.style.width = '64px';
+
+                    const descriptionElement = document.createElement('div');
+                    descriptionElement.textContent = icon.description;
+
+                    // Convert timestamp to a readable date string
+                    const date = new Date(icon.timestamp);
+                    const dateString = date.toLocaleString(); // You can customize the format
+
+                    const timestampElement = document.createElement('div');
+                    timestampElement.textContent = `Created: ${dateString}`;
+                    timestampElement.style.fontSize = '0.8em'; // Optional: make the timestamp smaller
+
+                    const buttonsElement = document.createElement('div');
+                    buttonsElement.className = 'history-item-buttons';
+
+                    const downloadZipButton = document.createElement('button');
+                    downloadZipButton.textContent = 'Download';
+                    downloadZipButton.onclick = () => downloadFile(icon.zipData, `VMU_ICONDATA_${icon.description}.zip`);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'x';
+
+                    // Use an IIFE to capture the current icon's id
+                    (function(id) {
+                        deleteButton.addEventListener('click', (event) => {
+                            event.preventDefault(); // Prevent default action
+                            event.stopPropagation(); // Stop the event from bubbling up
+                            deleteIconFromHistory(id);
+                        });
+                    })(icon.id);
+
+                    const reopenButton = document.createElement('button');
+                    reopenButton.textContent = 'Open';
+                    reopenButton.onclick = () => reopenIconInEditor(icon);
+
+                    iconDiv.appendChild(img);
+                    const iconDescDiv = document.createElement('div');
+                    iconDescDiv.className = 'history-item-desc';
+
+                    iconDescDiv.appendChild(descriptionElement);
+                    iconDescDiv.appendChild(timestampElement); // Add the timestamp element
+                    buttonsElement.appendChild(reopenButton);
+                    buttonsElement.appendChild(downloadZipButton);
+                    buttonsElement.appendChild(deleteButton);
+                    iconDescDiv.appendChild(buttonsElement);
+                    iconDiv.appendChild(iconDescDiv);
+
+                    historyList.appendChild(iconDiv);
+                });
+            }
+        };
+    }).catch(error => {
+        console.error('Failed to render icon history:', error);
+    });
+}
+
+function downloadFile(data, filename) {
+    const blob = new Blob([data], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url); // Clean up the URL object
+}
+
+function deleteIconFromHistory(id) {
+    dbReady.then(() => {
+        const transaction = db.transaction(['icons'], 'readwrite');
+        const objectStore = transaction.objectStore('icons');
+
+        const request = objectStore.delete(id);
+
+        request.onsuccess = function() {
+            console.log('Icon deleted from history');
+            renderIconHistory();
+        };
+
+        request.onerror = function(event) {
+            console.error('Error deleting icon:', event.target.errorCode);
+        };
+    }).catch(error => {
+        console.error('Failed to delete icon:', error);
+    });
+}
+
+function reopenIconInEditor(icon) {
+    // Load the icon data back into the editor
+    console.log('Reopening icon:', icon);
+
+    // Set the current state to the icon's data
+    currentPalette = icon.currentPalette;
+    storedPaletteIndices = icon.storedPaletteIndices;
+    monoPixelStates = icon.monoPixelStates;
+
+    // Update the description field
+    document.getElementById('description').value = icon.description;
+
+    // Update the UI with the loaded data
+    updateCanvasWithPalette(currentPalette);
+    displayColorPalette(currentPalette); // Update the color palette display
+    displayMonoPalette();
+
+    // Redraw the mono canvas
+    const canvas = document.getElementById('mono-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw updated mono pixels
+    for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 32; x++) {
+            const index = y * 32 + x;
+            if (monoPixelStates[index]) {
+                ctx.fillStyle = '#1d4781';
+                ctx.fillRect(
+                    x * scaleFactor + 1,
+                    y * scaleFactor + 1,
+                    scaleFactor - 1,
+                    scaleFactor - 1
+                );
+            }
+        }
+    }
+
+    // Additional updates as needed
+    updateMonoPaletteStates();
+}

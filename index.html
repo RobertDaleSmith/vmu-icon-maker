@@ -26,7 +26,7 @@
         <div id="color-area">
             <div class="inline-container">
                 <h3>Color Icon</h3>
-                <label for="color-file" class="image-file-upload">Image +</label>
+                <label for="color-file" class="image-file-upload">+ Image</label>
                 <input type="file" id="color-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
             <canvas id="color-canvas" width="320" height="320" class="transparent-bg"></canvas>
@@ -63,7 +63,7 @@
             <div class="inline-container">
                 <h3>Mono Icon</h3>
                 <label id="invert-mono-button" class="image-file-upload">Invert</label>
-                <label for="mono-file" class="image-file-upload">Image +</label>
+                <label for="mono-file" class="image-file-upload">+ Image</label>
                 <input type="file" id="mono-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
             <canvas id="mono-canvas" width="320" height="320"></canvas>
@@ -135,6 +135,10 @@
                 <label for="blue" class="color-picker-label">B</label>
                 <label for="alpha" class="color-picker-label">A</label>
             </div>
+        </div>
+        <div id="history-container" style="display: none;">
+            <h3>History</h3>
+            <div id="history-list"></div>
         </div>
     </div>
     <script src="app.js"></script>

@@ -449,3 +449,38 @@ input#description {
   -ms-user-select: none;
   user-select: none;
 }
+
+#history-container {
+  padding-bottom: 64px;
+}
+
+#history-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#history-list .history-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#history-list .history-item-desc {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 4px;
+}
+
+#history-list .history-item-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
