@@ -908,13 +908,15 @@ function createGIFData(pixelIndices, palette) {
         }
     }
 
+    // Determine if transparency is needed
+    const transparentIndex = palette.findIndex(color => color.a === 0);
+    const hasTransparency = transparentIndex !== -1;
+
     // --- Graphic Control Extension (for transparency) ---
     // This block indicates that palette index 15 is transparent.
     bytes.push(0x21, 0xF9, 0x04);
-    // Packed Field: transparency flag on (bit0=1), disposal method = 0.
-    bytes.push(0x01);
-    // Delay Time (2 bytes = 0) and Transparent Color Index = 15, Block Terminator.
-    bytes.push(0, 0, 15, 0);
+    bytes.push(hasTransparency ? 0x01 : 0x00); // Set transparency flag if needed
+    bytes.push(0, 0, hasTransparency ? transparentIndex : 0, 0);
 
     // --- Image Descriptor ---
     bytes.push(0x2C); // Image Separator.
