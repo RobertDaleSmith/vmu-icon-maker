@@ -1059,7 +1059,7 @@ function createVMIData(description) {
   // Fill VMI data based on the Python logic
   vmiData.set([0x41, 0x41, 0x47, 0x40], 0); // 0x00, 4 bytes
   vmiData.set(new TextEncoder().encode('ICONDATA_GENERATOR').slice(0, 32), 4); // 0x04, 32 bytes
-  vmiData.set(new TextEncoder().encode('@pomegd').slice(0, 32), 36); // 0x24, 32 bytes
+  vmiData.set(new TextEncoder().encode('@robertdalesmith').slice(0, 32), 36); // 0x24, 32 bytes
   vmiData.set([now.getFullYear() & 0xFF, (now.getFullYear() >> 8) & 0xFF], 68); // 0x44, 2 bytes
   vmiData.set([now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()], 70); // 0x46-0x4A, 5 bytes
   vmiData[75] = (now.getDay() + 1) % 7; // 0x4B, 1 byte
