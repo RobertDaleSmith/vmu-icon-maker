@@ -75,6 +75,9 @@ body {
 }
 
 #open-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
 }
 
@@ -468,6 +471,7 @@ input#description {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  text-align: left;
 }
 
 #history-list .history-item-desc {
@@ -475,6 +479,7 @@ input#description {
   flex-direction: column;
   align-items: start;
   gap: 4px;
+  width: 220px;
 }
 
 #history-list .history-item-buttons {
