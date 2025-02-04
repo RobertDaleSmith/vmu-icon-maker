@@ -2307,6 +2307,7 @@ function renderIconHistory() {
                     img.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
                     img.alt = 'Icon Preview';
                     img.style.width = '64px';
+                    img.style.imageRendering = 'pixelated';
 
                     const descriptionElement = document.createElement('div');
                     descriptionElement.textContent = icon.description;
