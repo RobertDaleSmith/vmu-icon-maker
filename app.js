@@ -1061,7 +1061,7 @@ async function saveVMSVMI() {
         downloadLink.download = `VMU_ICONDATA_${description}.zip`;
 
         // Save to history
-        saveIconToHistory(description, gifData, zipBlob, currentPalette, storedPaletteIndices, monoPixelStates);
+        saveIconToHistory(description, gifData, monoBMPData, zipBlob, currentPalette, storedPaletteIndices, monoPixelStates);
 
         // Trigger the download
         document.body.appendChild(downloadLink);
@@ -2366,7 +2366,7 @@ let dbReady = new Promise((resolve, reject) => {
     };
 });
 
-function saveIconToHistory(description, gifData, zipData, currentPalette, storedPaletteIndices, monoPixelStates) {
+function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPalette, storedPaletteIndices, monoPixelStates) {
     dbReady.then(() => {
         const transaction = db.transaction(['icons'], 'readwrite');
         const objectStore = transaction.objectStore('icons');
@@ -2378,6 +2378,7 @@ function saveIconToHistory(description, gifData, zipData, currentPalette, stored
             currentPalette: currentPalette,
             storedPaletteIndices: storedPaletteIndices,
             monoPixelStates: monoPixelStates,
+            monoBMPData: monoBMPData, // Store the mono BMP data
             timestamp: Date.now() // Add a timestamp when saving
         };
 
@@ -2399,7 +2400,7 @@ function saveIconToHistory(description, gifData, zipData, currentPalette, stored
 function renderIconHistory() {
     dbReady.then(() => {
         const historyList = document.getElementById('history-list');
-        const historyContainer = document.getElementById('history-container'); // Assuming this is the container
+        const historyContainer = document.getElementById('history-container');
 
         historyList.innerHTML = ''; // Clear existing history
 
@@ -2429,23 +2430,29 @@ function renderIconHistory() {
                 icons.forEach(icon => {
                     const iconDiv = document.createElement('div');
                     iconDiv.className = 'history-item';
+                    iconDiv.setAttribute('data-id', icon.id);
 
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
-                    img.alt = 'Icon Preview';
-                    img.style.width = '64px';
-                    img.style.imageRendering = 'pixelated';
+                    const gifImg = document.createElement('img');
+                    gifImg.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
+                    gifImg.alt = 'GIF Preview';
+                    gifImg.style.width = '64px';
+                    gifImg.style.imageRendering = 'pixelated';
+
+                    const monoImg = document.createElement('img');
+                    monoImg.src = URL.createObjectURL(new Blob([icon.monoBMPData], { type: 'image/bmp' }));
+                    monoImg.alt = 'Mono BMP Preview';
+                    monoImg.style.width = '64px';
+                    monoImg.style.imageRendering = 'pixelated';
 
                     const descriptionElement = document.createElement('div');
                     descriptionElement.textContent = icon.description;
 
-                    // Convert timestamp to a readable date string
                     const date = new Date(icon.timestamp);
-                    const dateString = date.toLocaleString(); // You can customize the format
+                    const dateString = date.toLocaleString();
 
                     const timestampElement = document.createElement('div');
                     timestampElement.textContent = `Created: ${dateString}`;
-                    timestampElement.style.fontSize = '0.8em'; // Optional: make the timestamp smaller
+                    timestampElement.style.fontSize = '0.8em';
 
                     const buttonsElement = document.createElement('div');
                     buttonsElement.className = 'history-item-buttons';
@@ -2455,15 +2462,12 @@ function renderIconHistory() {
                     downloadZipButton.onclick = () => downloadFile(icon.zipData, `VMU_ICONDATA_${icon.description}.zip`);
 
                     const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'x';
+                    deleteButton.textContent = 'Delete';
 
-                    // Use an IIFE to capture the current icon's id
                     (function(id) {
                         deleteButton.addEventListener('click', (event) => {
-                            event.preventDefault(); // Prevent default action
-                            event.stopPropagation(); // Stop the event from bubbling up
-                            
-                            // Display a confirmation dialog
+                            event.preventDefault();
+                            event.stopPropagation();
                             const confirmed = confirm('Are you sure you want to delete this icon?');
                             if (confirmed) {
                                 deleteIconFromHistory(id);
@@ -2472,15 +2476,16 @@ function renderIconHistory() {
                     })(icon.id);
 
                     const reopenButton = document.createElement('button');
-                    reopenButton.textContent = 'Edit';
+                    reopenButton.textContent = 'Load';
                     reopenButton.onclick = () => reopenIconInEditor(icon);
 
-                    iconDiv.appendChild(img);
+                    iconDiv.appendChild(gifImg);
+                    if (icon.monoBMPData) iconDiv.appendChild(monoImg);
                     const iconDescDiv = document.createElement('div');
                     iconDescDiv.className = 'history-item-desc';
 
                     iconDescDiv.appendChild(descriptionElement);
-                    iconDescDiv.appendChild(timestampElement); // Add the timestamp element
+                    iconDescDiv.appendChild(timestampElement);
                     buttonsElement.appendChild(reopenButton);
                     buttonsElement.appendChild(downloadZipButton);
                     buttonsElement.appendChild(deleteButton);
@@ -2517,7 +2522,19 @@ function deleteIconFromHistory(id) {
 
         request.onsuccess = function() {
             console.log('Icon deleted from history');
-            renderIconHistory();
+
+            // Remove the specific element from the DOM
+            const historyItem = document.querySelector(`.history-item[data-id="${id}"]`);
+            if (historyItem) {
+                historyItem.remove();
+            }
+
+            // Check if there are any remaining items and hide the container if empty
+            const historyList = document.getElementById('history-list');
+            if (historyList.children.length === 0) {
+                const historyContainer = document.getElementById('history-container');
+                historyContainer.style.display = 'none';
+            }
         };
 
         request.onerror = function(event) {
@@ -2531,6 +2548,9 @@ function deleteIconFromHistory(id) {
 function reopenIconInEditor(icon) {
     // Load the icon data back into the editor
     console.log('Reopening icon:', icon);
+
+    // Scroll the page to the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Set the current state to the icon's data
     currentPalette = icon.currentPalette;
