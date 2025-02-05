@@ -1237,7 +1237,7 @@ function parseDCMFile(dcmData) {
     // Parse the directory to find VMS files
     const vmsFiles = parseDirectory(directoryBlocks, fatBlock, correctedData);
 
-    console.log('Files found within DCM:', vmsFiles.length);
+    console.log('VMS files found within DCM file:', vmsFiles.length);
 
     if (vmsFiles.length > 0) {
         const triedIndices = new Set();
@@ -2462,12 +2462,17 @@ function renderIconHistory() {
                         deleteButton.addEventListener('click', (event) => {
                             event.preventDefault(); // Prevent default action
                             event.stopPropagation(); // Stop the event from bubbling up
-                            deleteIconFromHistory(id);
+                            
+                            // Display a confirmation dialog
+                            const confirmed = confirm('Are you sure you want to delete this icon?');
+                            if (confirmed) {
+                                deleteIconFromHistory(id);
+                            }
                         });
                     })(icon.id);
 
                     const reopenButton = document.createElement('button');
-                    reopenButton.textContent = 'Open';
+                    reopenButton.textContent = 'Edit';
                     reopenButton.onclick = () => reopenIconInEditor(icon);
 
                     iconDiv.appendChild(img);
