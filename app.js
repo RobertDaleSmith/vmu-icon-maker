@@ -36,17 +36,29 @@ document.getElementById('mono-file').addEventListener('change', function(event) 
 
 document.getElementById('unified-file').addEventListener('change', function(event) {
     const file = event.target.files[0];
+    handleFileInput(file);
+});
+
+function handleFileInput(file) {
     if (!file) return;
 
     const extension = file.name.toLowerCase().split('.').pop();
     const description = file.name.split('.')[0].slice(0, 16).toUpperCase();
-    
+
     if (extension === 'vms') {
         // Handle VMS file
         const reader = new FileReader();
         reader.onload = function(e) {
             const vmsData = new Uint8Array(e.target.result);
             parseVMSFile(vmsData);
+        };
+        reader.readAsArrayBuffer(file);
+    } else if (extension === 'dci') {
+        // Handle DCI file
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dciData = new Uint8Array(e.target.result);
+            parseDCIFile(dciData);
         };
         reader.readAsArrayBuffer(file);
     } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
@@ -65,7 +77,7 @@ document.getElementById('unified-file').addEventListener('change', function(even
     } else {
         alert('Unsupported file type. Please use VMS or image files (PNG, JPG, GIF, WEBP).');
     }
-});
+}
 
 document.getElementById('save-button').addEventListener('click', saveVMSVMI);
 
@@ -1187,6 +1199,44 @@ function saveFile(data, filename) {
   document.body.removeChild(link);
 }
 
+function parseDCIFile(dciData) {
+    const DIRECTORY_ENTRY_SIZE = 32;
+
+    // Check if the file is large enough to contain a directory entry
+    if (dciData.length <= DIRECTORY_ENTRY_SIZE) {
+        throw new Error('Invalid DCI file: too short');
+    }
+
+    // Extract the directory entry
+    const directoryEntry = dciData.slice(0, DIRECTORY_ENTRY_SIZE);
+
+    // Extract file size in blocks from the directory entry
+    const fileSizeInBlocks = directoryEntry[0x18] | (directoryEntry[0x19] << 8);
+
+    // Calculate the total data size (in bytes) based on the number of blocks
+    const totalDataSize = fileSizeInBlocks * 512;
+
+    // Check if the file contains enough data
+    if (dciData.length < DIRECTORY_ENTRY_SIZE + totalDataSize) {
+        throw new Error('DCI file is too short for the specified file size');
+    }
+
+    // Extract the file data blocks
+    const fileData = dciData.slice(DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE + totalDataSize);
+
+    // Correct the byte order by reversing every group of four bytes
+    const correctedData = new Uint8Array(totalDataSize);
+    for (let i = 0; i < fileData.length; i += 4) {
+        correctedData[i] = fileData[i + 3];
+        correctedData[i + 1] = fileData[i + 2];
+        correctedData[i + 2] = fileData[i + 1];
+        correctedData[i + 3] = fileData[i];
+    }
+
+    // Pass the corrected data to the VMS parser
+    parseVMSFile(correctedData);
+}
+
 function parseVMSFile(vmsData) {
     // Check for 3D mode sequence at offset 0x2C0
     const has3DMode = check3DModeSequence(vmsData);
@@ -1850,44 +1900,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle dropped files anywhere on the document
     document.addEventListener('drop', (e) => {
-        preventDefaults(e);
-        const dt = e.dataTransfer;
-        const files = dt.files;
-
-        if (files.length) {
-            const file = files[0];
-            const extension = file.name.toLowerCase().split('.').pop();
-            // Get filename without extension, limit to 16 chars, and uppercase
-            const description = file.name.split('.')[0].slice(0, 16).toUpperCase();
-            
-            // Clear the boot ROM description
-            document.getElementById('boot-rom-description').textContent = '';
-
-            if (extension === 'vms') {
-                // Handle VMS file
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const vmsData = new Uint8Array(e.target.result);
-                    parseVMSFile(vmsData);
-                };
-                reader.readAsArrayBuffer(file);
-            } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
-                // Handle image file - process both color and mono
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        processColorImage(img);
-                        processMonoImage(img);
-                        document.getElementById('description').value = description;
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                alert('Unsupported file type. Please use VMS or image files (PNG, JPG, GIF, WEBP).');
-            }
-        }
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        handleFileInput(file);
     });
 
     // Initialize mono palette
