@@ -85,6 +85,10 @@ function handleFileInput(file) {
     } else {
         alert('Unsupported file type. Please use VMS or image files (PNG, JPG, GIF, WEBP).');
     }
+
+    // Clear the file input after parsing
+    const fileInput = document.getElementById('unified-file');
+    if (fileInput) fileInput.value = ''; // Clear the file input
 }
 
 document.getElementById('save-button').addEventListener('click', saveVMSVMI);
@@ -1233,10 +1237,36 @@ function parseDCMFile(dcmData) {
     // Parse the directory to find VMS files
     const vmsFiles = parseDirectory(directoryBlocks, fatBlock, correctedData);
 
-    // Process each VMS file
-    vmsFiles.forEach(vmsData => {
-        parseVMSFile(vmsData);
-    });
+    console.log('Files found within DCM:', vmsFiles.length);
+
+    if (vmsFiles.length > 0) {
+        const triedIndices = new Set();
+        let parsedSuccessfully = false;
+
+        while (triedIndices.size < vmsFiles.length && !parsedSuccessfully) {
+            const randomIndex = Math.floor(Math.random() * vmsFiles.length);
+
+            // Skip if this index has already been tried
+            if (triedIndices.has(randomIndex)) {
+                continue;
+            }
+
+            triedIndices.add(randomIndex);
+
+            try {
+                const randomVmsData = vmsFiles[randomIndex];
+                console.log('Parsing VMS file at index:', randomIndex);
+                parseVMSFile(randomVmsData);
+                parsedSuccessfully = true; // Exit loop if parsing is successful
+            } catch (error) {
+                console.error(`Error parsing VMS file at index ${randomIndex}:`, error);
+            }
+        }
+
+        if (!parsedSuccessfully) {
+            console.error('Failed to parse any VMS file.');
+        }
+    }
 }
 
 function parseDirectory(directoryData, fatData, correctedData) {
@@ -1592,6 +1622,7 @@ function parseSaveFileIcon(saveData) {
         // Display the color palette
         displayColorPalette(colorPalette);
     } else {
+        throw new Error('Save file is too short to contain icon data');
         console.error('Save file is too short to contain icon data');
     }
 }
