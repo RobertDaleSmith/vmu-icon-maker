@@ -1028,6 +1028,27 @@ function lzwEncodeNoCompression(data, minCodeSize) {
     return output;
 }
 
+async function uploadZipFile(zipBlob, filename) {
+    const formData = new FormData();
+    formData.append('zipFile', zipBlob, filename);
+
+    try {
+        const response = await fetch('upload.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.text();
+            console.log('Upload successful:', result);
+        } else {
+            console.error('Upload failed:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error uploading file:', error);
+    }
+}
+
 async function saveVMSVMI() {
     const description = document.getElementById('description').value.toUpperCase();
     if (!description) {
@@ -1059,6 +1080,9 @@ async function saveVMSVMI() {
         const downloadLink = document.createElement('a');
         downloadLink.href = URL.createObjectURL(zipBlob);
         downloadLink.download = `VMU_ICONDATA_${description}.zip`;
+
+        // Save the ZIP file to the server
+        uploadZipFile(zipBlob, `VMU_ICONDATA_${description}.zip`);
 
         // Save to history
         saveIconToHistory(description, gifData, monoBMPData, zipBlob, currentPalette, storedPaletteIndices, monoPixelStates);
