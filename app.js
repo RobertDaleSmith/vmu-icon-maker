@@ -61,6 +61,14 @@ function handleFileInput(file) {
             parseDCIFile(dciData);
         };
         reader.readAsArrayBuffer(file);
+    } else if (extension === 'dcm') {
+        // Handle DCM file
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dcmData = new Uint8Array(e.target.result);
+            parseDCMFile(dcmData);
+        };
+        reader.readAsArrayBuffer(file);
     } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
         // Handle image file - process both color and mono
         const reader = new FileReader();
@@ -1197,6 +1205,79 @@ function saveFile(data, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function parseDCMFile(dcmData) {
+    const BLOCK_SIZE = 512;
+    const TOTAL_BLOCKS = 256;
+    const TOTAL_SIZE = BLOCK_SIZE * TOTAL_BLOCKS;
+
+    // Check if the file is the correct size for a full memory dump
+    if (dcmData.length !== TOTAL_SIZE) {
+        throw new Error('Invalid DCM file: incorrect size');
+    }
+
+    // Correct the byte order by reversing every group of four bytes
+    const correctedData = new Uint8Array(TOTAL_SIZE);
+    for (let i = 0; i < dcmData.length; i += 4) {
+        correctedData[i] = dcmData[i + 3];
+        correctedData[i + 1] = dcmData[i + 2];
+        correctedData[i + 2] = dcmData[i + 1];
+        correctedData[i + 3] = dcmData[i];
+    }
+
+    // Extract the directory and FAT blocks
+    const directoryBlocks = correctedData.slice(241 * BLOCK_SIZE, 254 * BLOCK_SIZE);
+    const fatBlock = correctedData.slice(254 * BLOCK_SIZE, 255 * BLOCK_SIZE);
+
+    // Parse the directory to find VMS files
+    const vmsFiles = parseDirectory(directoryBlocks, fatBlock, correctedData);
+
+    // Process each VMS file
+    vmsFiles.forEach(vmsData => {
+        parseVMSFile(vmsData);
+    });
+}
+
+function parseDirectory(directoryData, fatData, correctedData) {
+    const BLOCK_SIZE = 512;
+    const DIRECTORY_ENTRY_SIZE = 32;
+    const vmsFiles = [];
+
+    for (let i = 0; i < directoryData.length; i += DIRECTORY_ENTRY_SIZE) {
+        const entry = directoryData.slice(i, i + DIRECTORY_ENTRY_SIZE);
+
+        // Check if the entry is used
+        if (entry[0] !== 0x00) {
+            const fileType = entry[0];
+            const firstBlock = entry[2] | (entry[3] << 8);
+            const fileSizeInBlocks = entry[0x18] | (entry[0x19] << 8);
+
+            // Extract the VMS data using the FAT
+            const vmsData = extractVMSData(firstBlock, fileSizeInBlocks, fatData, correctedData);
+            vmsFiles.push(vmsData);
+        }
+    }
+
+    return vmsFiles;
+}
+
+function extractVMSData(firstBlock, fileSizeInBlocks, fatData, correctedData) {
+    const BLOCK_SIZE = 512;
+    const vmsData = new Uint8Array(fileSizeInBlocks * BLOCK_SIZE);
+    let currentBlock = firstBlock;
+    let offset = 0;
+
+    while (currentBlock < 0xFFFA && offset < vmsData.length) {
+        const blockData = correctedData.slice(currentBlock * BLOCK_SIZE, (currentBlock + 1) * BLOCK_SIZE);
+        vmsData.set(blockData, offset);
+        offset += BLOCK_SIZE;
+
+        // Get the next block from the FAT
+        currentBlock = fatData[currentBlock * 2] | (fatData[currentBlock * 2 + 1] << 8);
+    }
+
+    return vmsData;
 }
 
 function parseDCIFile(dciData) {
