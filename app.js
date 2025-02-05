@@ -2370,6 +2370,7 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
     dbReady.then(() => {
         const transaction = db.transaction(['icons'], 'readwrite');
         const objectStore = transaction.objectStore('icons');
+        const threeDModeEnabled = document.getElementById('3d-mode-toggle').checked;
 
         const iconEntry = {
             description: description,
@@ -2379,6 +2380,7 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
             storedPaletteIndices: storedPaletteIndices,
             monoPixelStates: monoPixelStates,
             monoBMPData: monoBMPData, // Store the mono BMP data
+            threeDModeEnabled: threeDModeEnabled,
             timestamp: Date.now() // Add a timestamp when saving
         };
 
@@ -2556,6 +2558,9 @@ function reopenIconInEditor(icon) {
     currentPalette = icon.currentPalette;
     storedPaletteIndices = icon.storedPaletteIndices;
     monoPixelStates = icon.monoPixelStates;
+
+    // Restore the 3D mode state
+    document.getElementById('3d-mode-toggle').checked = icon.threeDModeEnabled;
 
     // Update the description field
     document.getElementById('description').value = icon.description;
