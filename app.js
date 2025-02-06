@@ -69,6 +69,14 @@ function handleFileInput(file) {
             parseDCMFile(dcmData);
         };
         reader.readAsArrayBuffer(file);
+    } else if (extension === 'psv') {
+        // Handle PSV file
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const psvData = new Uint8Array(e.target.result);
+            parsePSVFile(psvData);
+        };
+        reader.readAsArrayBuffer(file);
     } else if (['ico', 'bmp', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
         // Handle image file - process both color and mono
         const reader = new FileReader();
@@ -1233,6 +1241,138 @@ function saveFile(data, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function parsePSVFile(psvData) {
+    const HEADER_SIZE = 0x84;
+    const ICON_FRAME_SIZE = 128; // 16x16 pixels, 4 bits per pixel
+    const CLUT_SIZE = 32; // 16 colors, 2 bytes each
+    const DESCRIPTION_OFFSET = 0x64; // Example offset for description
+    const DESCRIPTION_LENGTH = 0x14; // Example length for description
+
+    // Extract the description text
+    const descriptionBytes = psvData.slice(DESCRIPTION_OFFSET, DESCRIPTION_OFFSET + DESCRIPTION_LENGTH);
+    const description = new TextDecoder('utf-8').decode(descriptionBytes).replace(/\0/g, '');
+    document.getElementById('description').value = description;
+    console.log('Description:', description);
+
+    // Offsets based on the PSV format documentation
+    const CLUT_OFFSET = HEADER_SIZE + 0x60;
+    const ICON_OFFSET = HEADER_SIZE + 0x80;
+
+    // Extract the color palette (CLUT)
+    const clutData = psvData.slice(CLUT_OFFSET, CLUT_OFFSET + CLUT_SIZE);
+    const palette = extractPSVPalette(clutData);
+
+    // Extract the icon frame data
+    const iconFrameData = psvData.slice(ICON_OFFSET, ICON_OFFSET + ICON_FRAME_SIZE);
+
+    // Convert the icon frame data to palette indices
+    const indices = convertIconFrameToIndices(iconFrameData);
+
+    // Update storedPaletteIndices and currentPalette
+    storedPaletteIndices = indices;
+
+    // Render the canvas using your existing logic
+    currentPalette = palette;
+    updateCanvasWithPalette(currentPalette);
+    displayColorPalette(currentPalette);
+}
+
+function convertIconFrameToIndices(iconFrameData) {
+    const indices = [];
+    const originalWidth = 16;
+    const newWidth = 32;
+
+    for (let y = 0; y < originalWidth; y++) {
+        for (let x = 0; x < originalWidth; x += 2) {
+            const byteIndex = y * (originalWidth / 2) + (x / 2);
+            const byte = iconFrameData[byteIndex];
+
+            // Each byte contains two pixels (4 bits per pixel)
+            const highNibble = (byte >> 4) & 0x0F;
+            const lowNibble = byte & 0x0F;
+
+            // Duplicate each pixel to scale from 16x16 to 32x32
+            indices.push(lowNibble, lowNibble, highNibble, highNibble);
+        }
+    }
+
+    // Duplicate each row to complete the scaling
+    const scaledIndices = [];
+    for (let y = 0; y < originalWidth; y++) {
+        const rowStart = y * newWidth;
+        const row = indices.slice(rowStart, rowStart + newWidth);
+        scaledIndices.push(...row, ...row);
+    }
+
+    return scaledIndices;
+}
+
+function convertIconFrameToRGBA(iconFrameData, palette) {
+    const iconData = [];
+    const width = 16; // Width of the icon
+
+    for (let y = 0; y < width; y++) {
+        for (let x = 0; x < width; x += 2) {
+            const byteIndex = y * (width / 2) + (x / 2);
+            const byte = iconFrameData[byteIndex];
+
+            // Each byte contains two pixels (4 bits per pixel)
+            const highNibble = (byte >> 4) & 0x0F;
+            const lowNibble = byte & 0x0F;
+
+            // Map the nibbles to the correct colors in the palette
+            const pixel1 = palette[lowNibble];
+            const pixel2 = palette[highNibble];
+
+            // Push pixels in the correct order
+            iconData.push(pixel1, pixel2);
+        }
+    }
+    return iconData;
+}
+
+function extractPSVPalette(clutData) {
+    const palette = [];
+    for (let i = 0; i < clutData.length; i += 2) {
+        const color = clutData[i] | (clutData[i + 1] << 8);
+
+        // Extract and scale the color components
+        const r = Math.round((((color >> 0) & 0x1F) * 15) / 31) * 17;
+        const g = Math.round((((color >> 5) & 0x1F) * 15) / 31) * 17;
+        const b = Math.round((((color >> 10) & 0x1F) * 15) / 31) * 17;
+        const a = (color & 0x8000) ? 0 : 255; // Keep alpha as 0 or 255
+
+        palette.push({ r: Math.round(r), g: Math.round(g), b: Math.round(b), a });
+    }
+    return palette;
+}
+
+function scaleIcon(iconData, originalWidth, originalHeight, newWidth, newHeight) {
+    const scaledData = new Array(newWidth * newHeight);
+    for (let y = 0; y < newHeight; y++) {
+        for (let x = 0; x < newWidth; x++) {
+            const origX = Math.floor(x * originalWidth / newWidth);
+            const origY = Math.floor(y * originalHeight / newHeight);
+            const origIndex = origY * originalWidth + origX;
+            scaledData[y * newWidth + x] = iconData[origIndex];
+        }
+    }
+    return scaledData;
+}
+
+function convertToImageData(iconData, width, height) {
+    const imageData = new ImageData(width, height);
+    for (let i = 0; i < iconData.length; i++) {
+        const color = iconData[i];
+        const index = i * 4;
+        imageData.data[index] = color.r;
+        imageData.data[index + 1] = color.g;
+        imageData.data[index + 2] = color.b;
+        imageData.data[index + 3] = color.a;
+    }
+    return imageData;
 }
 
 function parseDCMFile(dcmData) {
