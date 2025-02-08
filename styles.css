@@ -403,6 +403,7 @@ input#description {
   top: 100%;
   left: 0;
   margin-top: 4px;
+  z-index: 1000;
 }
 
 .option-container:hover .tooltip {

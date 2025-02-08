@@ -1041,16 +1041,19 @@ async function uploadZipFile(zipBlob, filename) {
     formData.append('zipFile', zipBlob, filename);
 
     try {
-        const response = await fetch('upload.php', {
-            method: 'POST',
-            body: formData
-        });
+        let response;
+        if (document.getElementById('share-public').checked) {
+            response = await fetch('http://dcvmuicons.net/maker/upload.php', {
+                method: 'POST',
+                body: formData
+            });
 
-        if (response.ok) {
-            const result = await response.text();
-            console.log('Upload successful:', result);
-        } else {
-            console.error('Upload failed:', response.statusText);
+            if (response.ok) {
+                const result = await response.text();
+                console.log('Upload successful:', result);
+            } else {
+                console.error('Upload failed:', response.statusText);
+            }
         }
     } catch (error) {
         console.error('Error uploading file:', error);
