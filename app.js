@@ -1828,6 +1828,18 @@ function check3DModeSequence(vmsData) {
 
 // Initialize the color indicators and both canvases
 document.addEventListener('DOMContentLoaded', () => {
+    // Restore the checkbox state from localStorage
+    const sharePublicCheckbox = document.getElementById('share-public');
+    const savedState = localStorage.getItem('sharePublicState');
+    if (savedState !== null) {
+        sharePublicCheckbox.checked = JSON.parse(savedState);
+    }
+
+    // Add an event listener to save the state when it changes
+    sharePublicCheckbox.addEventListener('change', () => {
+        localStorage.setItem('sharePublicState', JSON.stringify(sharePublicCheckbox.checked));
+    });
+
     redInput = document.getElementById('red');
     greenInput = document.getElementById('green');
     blueInput = document.getElementById('blue');
