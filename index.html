@@ -30,7 +30,7 @@
         <div id="color-area">
             <div class="inline-container">
                 <h3>Color Icon</h3>
-                <label for="color-file" class="image-file-upload">+ Image</label>
+                <label for="color-file" class="option-button">+ Image</label>
                 <input type="file" id="color-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
             <canvas id="color-canvas" width="320" height="320" class="transparent-bg"></canvas>
@@ -66,8 +66,9 @@
         <div id="mono-area">
             <div class="inline-container">
                 <h3>Mono Icon</h3>
-                <label id="invert-mono-button" class="image-file-upload">Invert</label>
-                <label for="mono-file" class="image-file-upload">+ Image</label>
+                <label id="clear-mono-button" class="option-button">Clear</label>
+                <label id="invert-mono-button" class="option-button">Invert</label>
+                <label for="mono-file" class="option-button">+ Image</label>
                 <input type="file" id="mono-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
             <canvas id="mono-canvas" width="320" height="320"></canvas>
@@ -111,7 +112,7 @@
             </div>
             <div class="option-container">
                 <input type="checkbox" id="share-public" />
-                <label for="share-public">Upload to DCVMUICONS.net</label>
+                <label for="share-public">Share with DCVMUICONS.net</label>
                 <div class="tooltip">
                     Share your icon with the community on DCVMUICONS.net
                 </div>

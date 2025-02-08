@@ -2211,6 +2211,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize icon history
     renderIconHistory();
+
+    const clearMonoButton = document.getElementById('clear-mono-button');
+    clearMonoButton.addEventListener('click', () => {
+        clearMonoState();
+    });
 });
 
 function rgbToHsb(r, g, b) {
@@ -2779,4 +2784,19 @@ function reopenIconInEditor(icon) {
 
     // Additional updates as needed
     updateMonoPaletteStates();
+}
+
+function clearMonoState() {
+    // Clear the monoPixelStates array
+    monoPixelStates = new Array(32 * 32).fill(false); // Assuming a 32x32 grid
+
+    // Clear the mono canvas
+    const monoCanvas = document.getElementById('mono-canvas');
+    const context = monoCanvas.getContext('2d');
+    context.clearRect(0, 0, monoCanvas.width, monoCanvas.height);
+
+    // Update the mono palette display
+    updateMonoPaletteStates();
+
+    console.log('Mono state cleared');
 }

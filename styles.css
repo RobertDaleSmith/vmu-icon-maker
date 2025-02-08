@@ -194,7 +194,7 @@ body {
   border-color: #0056b3;
 }
 
-.image-file-upload {
+.option-button {
   display: inline-block;
   padding: 2px 8px;
   cursor: pointer;
@@ -206,9 +206,10 @@ body {
   margin-right: 2px;
   line-height: 17px;
   height: 20px;
+  font-size: 12px;
 }
 
-.image-file-upload:hover {
+.option-button:hover {
   background: rgba(0, 0, 0, 0.05);
 }
 
