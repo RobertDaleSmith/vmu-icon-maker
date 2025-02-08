@@ -1115,7 +1115,7 @@ function createVMIData(description) {
   const now = new Date();
   const vmiData = new Uint8Array(108);
 
-  // Fill VMI data based on the Python logic
+  // Fill VMI data
   vmiData.set([0x41, 0x41, 0x47, 0x40], 0); // 0x00, 4 bytes
   vmiData.set(new TextEncoder().encode('ICONDATA_GENERATOR').slice(0, 32), 4); // 0x04, 32 bytes
   vmiData.set(new TextEncoder().encode('@robertdalesmith').slice(0, 32), 36); // 0x24, 32 bytes
@@ -2553,9 +2553,14 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
 
         const request = objectStore.add(iconEntry);
 
-        request.onsuccess = function() {
+        request.onsuccess = function(event) {
             console.log('Icon saved to history');
-            renderIconHistory();
+            const iconId = event.target.result; // Get the ID of the newly saved icon
+        
+            // Create and prepend the new history item
+            const historyList = document.getElementById('history-list');
+            const newHistoryItem = createHistoryItemElement(iconEntry, iconId);
+            historyList.insertBefore(newHistoryItem, historyList.firstChild);
         };
 
         request.onerror = function(event) {
@@ -2564,6 +2569,71 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
     }).catch(error => {
         console.error('Failed to save icon:', error);
     });
+}
+
+function createHistoryItemElement(icon, iconId) {
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'history-item';
+    iconDiv.setAttribute('data-id', iconId);
+
+    const gifImg = document.createElement('img');
+    gifImg.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
+    gifImg.alt = 'GIF Preview';
+    gifImg.style.width = '64px';
+    gifImg.style.imageRendering = 'pixelated';
+
+    const monoImg = document.createElement('img');
+    monoImg.src = URL.createObjectURL(new Blob([icon.monoBMPData], { type: 'image/bmp' }));
+    monoImg.alt = 'Mono BMP Preview';
+    monoImg.style.width = '64px';
+    monoImg.style.imageRendering = 'pixelated';
+
+    const descriptionElement = document.createElement('div');
+    descriptionElement.textContent = icon.description;
+
+    const date = new Date(icon.timestamp);
+    const dateString = date.toLocaleString();
+
+    const timestampElement = document.createElement('div');
+    timestampElement.textContent = `Created: ${dateString}`;
+    timestampElement.style.fontSize = '0.8em';
+
+    const buttonsElement = document.createElement('div');
+    buttonsElement.className = 'history-item-buttons';
+
+    const downloadZipButton = document.createElement('button');
+    downloadZipButton.textContent = 'Download';
+    downloadZipButton.onclick = () => downloadFile(icon.zipData, `ICONDATA_VMS_${icon.description.replace(/\s+/g, '_')}.zip`);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const confirmed = confirm('Are you sure you want to delete this icon?');
+        if (confirmed) {
+            deleteIconFromHistory(iconId);
+        }
+    });
+
+    const reopenButton = document.createElement('button');
+    reopenButton.textContent = 'Load';
+    reopenButton.onclick = () => reopenIconInEditor(icon);
+
+    iconDiv.appendChild(gifImg);
+    if (icon.monoBMPData) iconDiv.appendChild(monoImg);
+    const iconDescDiv = document.createElement('div');
+    iconDescDiv.className = 'history-item-desc';
+
+    iconDescDiv.appendChild(descriptionElement);
+    iconDescDiv.appendChild(timestampElement);
+    buttonsElement.appendChild(reopenButton);
+    buttonsElement.appendChild(downloadZipButton);
+    buttonsElement.appendChild(deleteButton);
+    iconDescDiv.appendChild(buttonsElement);
+    iconDiv.appendChild(iconDescDiv);
+
+    return iconDiv;
 }
 
 function renderIconHistory() {
@@ -2597,70 +2667,7 @@ function renderIconHistory() {
 
                 // Render sorted icons
                 icons.forEach(icon => {
-                    const iconDiv = document.createElement('div');
-                    iconDiv.className = 'history-item';
-                    iconDiv.setAttribute('data-id', icon.id);
-
-                    const gifImg = document.createElement('img');
-                    gifImg.src = URL.createObjectURL(new Blob([icon.gifData], { type: 'image/gif' }));
-                    gifImg.alt = 'GIF Preview';
-                    gifImg.style.width = '64px';
-                    gifImg.style.imageRendering = 'pixelated';
-
-                    const monoImg = document.createElement('img');
-                    monoImg.src = URL.createObjectURL(new Blob([icon.monoBMPData], { type: 'image/bmp' }));
-                    monoImg.alt = 'Mono BMP Preview';
-                    monoImg.style.width = '64px';
-                    monoImg.style.imageRendering = 'pixelated';
-
-                    const descriptionElement = document.createElement('div');
-                    descriptionElement.textContent = icon.description;
-
-                    const date = new Date(icon.timestamp);
-                    const dateString = date.toLocaleString();
-
-                    const timestampElement = document.createElement('div');
-                    timestampElement.textContent = `Created: ${dateString}`;
-                    timestampElement.style.fontSize = '0.8em';
-
-                    const buttonsElement = document.createElement('div');
-                    buttonsElement.className = 'history-item-buttons';
-
-                    const downloadZipButton = document.createElement('button');
-                    downloadZipButton.textContent = 'Download';
-                    downloadZipButton.onclick = () => downloadFile(icon.zipData, `VMU_ICONDATA_${icon.description}.zip`);
-
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'Delete';
-
-                    (function(id) {
-                        deleteButton.addEventListener('click', (event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            const confirmed = confirm('Are you sure you want to delete this icon?');
-                            if (confirmed) {
-                                deleteIconFromHistory(id);
-                            }
-                        });
-                    })(icon.id);
-
-                    const reopenButton = document.createElement('button');
-                    reopenButton.textContent = 'Load';
-                    reopenButton.onclick = () => reopenIconInEditor(icon);
-
-                    iconDiv.appendChild(gifImg);
-                    if (icon.monoBMPData) iconDiv.appendChild(monoImg);
-                    const iconDescDiv = document.createElement('div');
-                    iconDescDiv.className = 'history-item-desc';
-
-                    iconDescDiv.appendChild(descriptionElement);
-                    iconDescDiv.appendChild(timestampElement);
-                    buttonsElement.appendChild(reopenButton);
-                    buttonsElement.appendChild(downloadZipButton);
-                    buttonsElement.appendChild(deleteButton);
-                    iconDescDiv.appendChild(buttonsElement);
-                    iconDiv.appendChild(iconDescDiv);
-
+                    const iconDiv = createHistoryItemElement(icon, icon.id);
                     historyList.appendChild(iconDiv);
                 });
             }
