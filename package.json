@@ -1,5 +1,54 @@
 {
   "name": "vmu-icon-maker",
+  "productName": "VMU Icon Maker",
   "version": "1.0.0",
-  "description": "Dreamcast VMU Icon Maker"
+  "description": "Dreamcast VMU Icon Maker",
+  "main": "main.js",
+  "homepage": "http://dcvmnuicons.com/maker",
+  "author": {
+    "name": "Robert Dale Smith",
+    "email": "robert@robertdalesmith.com"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux --win --mac"
+  },
+  "devDependencies": {
+    "electron": "^34.1.1",
+    "electron-builder": "^24.3.0"
+  },
+  "build": {
+    "appId": "com.dcvmnuicons.maker",
+    "productName": "VMU Icon Maker",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "app.js",
+      "background.js",
+      "favicon.ico",
+      "index.html",
+      "styles.css",
+      "libs/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "icon": "assets/icons/app-icon.icns"
+    },
+    "win": {
+      "icon": "assets/icons/app-icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "assets/icons/app-icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Robert Dale Smith <robert@robertdalesmith.com>"
+    }
+  }
 }

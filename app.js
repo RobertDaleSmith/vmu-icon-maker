@@ -2578,6 +2578,8 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
             const historyList = document.getElementById('history-list');
             const newHistoryItem = createHistoryItemElement(iconEntry, iconId);
             historyList.insertBefore(newHistoryItem, historyList.firstChild);
+            const historyContainer = document.getElementById('history-container');
+            historyContainer.style.display = 'none';
         };
 
         request.onerror = function(event) {
