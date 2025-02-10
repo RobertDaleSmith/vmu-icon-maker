@@ -2,6 +2,10 @@
 
 VMU Icon Maker is a tool designed to create and manage icons for the Dreamcast VMU (Visual Memory Unit). This application allows users to generate, edit, and save ICONDATA_VMS icon files.
 
+![VMU Icon Maker](assets/images/app-ui.png)
+
+![VMU Icon Maker](assets/images/vmu-icon-menu.png)
+
 ## Getting Started
 
 To quickly get started with VMU Icon Maker, you have two options:
