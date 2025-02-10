@@ -3,6 +3,7 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 function createWindow() {
+  console.log('Creating window...');
   const win = new BrowserWindow({
     width: 860,
     height: 860,
@@ -13,7 +14,11 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index.html');
+  win.loadFile('index.html').then(() => {
+    console.log('Window loaded successfully');
+  }).catch(err => {
+    console.error('Failed to load window:', err);
+  });
 }
 
 app.whenReady().then(createWindow);
