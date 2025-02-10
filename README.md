@@ -12,7 +12,7 @@ To quickly get started with VMU Icon Maker, you have two options:
 
 1. **Run in Browser**: Download the project and open `index.html` directly in your browser to start using the application without any installation.
 
-2. **Download Release Build**: Download the latest release build for Windows, macOS, or Linux from the [releases page](https://github.com/yourusername/vmu-icon-maker/releases) and run the application on your system.
+2. **Download Release Build**: Download the latest release build for Windows, macOS, or Linux from the [releases page]([https://github.com/yourusername/vmu-icon-maker/releases](https://github.com/RobertDaleSmith/vmu-icon-maker/releases)) and run the application on your system.
 
 ## What are VMU Icons?
 
