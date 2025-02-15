@@ -11,7 +11,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --linux --win --mac"
+    "build": "electron-builder --linux --win --mac",
+    "build-x64": "electron-builder --linux --win --mac --x64"
   },
   "devDependencies": {
     "electron": "^34.1.1",
