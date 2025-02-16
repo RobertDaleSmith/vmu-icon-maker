@@ -1742,10 +1742,7 @@ function parseIconData(data, colorOffset, monoOffset) {
         }
     } else {
         // Set default color icon data
-        storedPaletteIndices = new Array(32 * 32).fill(1);
-        currentPalette = [...defaultPalette];
-        displayColorPalette(currentPalette);
-        updateCanvasWithPalette(currentPalette);
+        resetColorState();
     }
 
     // Parse monochrome icon if present
@@ -2317,7 +2314,23 @@ document.addEventListener('DOMContentLoaded', () => {
             resetMonoState();
         }
     });
+
+    const resetColorButton = document.getElementById('reset-color-button');
+    resetColorButton.addEventListener('click', () => {
+        const confirmed = confirm('Are you sure you want to reset the color state?');
+        if (confirmed) {
+            resetColorState();
+        }
+    });
 });
+
+function resetColorState() {
+    storedPaletteIndices = new Array(32 * 32).fill(1);
+    currentPalette = [...defaultPalette];
+    displayColorPalette(currentPalette);
+    updateCanvasWithPalette(currentPalette);
+    updateMonoPaletteStates();
+}
 
 function rgbToHsb(r, g, b) {
     r /= 255;
