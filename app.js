@@ -2310,9 +2310,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize icon history
     renderIconHistory();
 
-    const clearMonoButton = document.getElementById('clear-mono-button');
-    clearMonoButton.addEventListener('click', () => {
-        clearMonoState();
+    const resetMonoButton = document.getElementById('reset-mono-button');
+    resetMonoButton.addEventListener('click', () => {
+        const confirmed = confirm('Are you sure you want to reset the mono state?');
+        if (confirmed) {
+            resetMonoState();
+        }
     });
 });
 
@@ -2891,7 +2894,7 @@ function reopenIconInEditor(icon) {
     updateMonoPaletteStates();
 }
 
-function clearMonoState() {
+function resetMonoState() {
     // Clear the monoPixelStates array
     monoPixelStates = new Array(32 * 32).fill(false); // Assuming a 32x32 grid
 
