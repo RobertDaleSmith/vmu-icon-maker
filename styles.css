@@ -456,13 +456,16 @@ input#description {
 }
 
 #history-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding-bottom: 64px;
 }
 
 #history-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: end;
   justify-content: center;
   gap: 8px;
 }

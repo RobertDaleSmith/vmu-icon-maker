@@ -26,6 +26,26 @@ const THREED_MODE_SEQUENCE = new Uint8Array([
     0x18, 0x92, 0x79, 0x68, 0x2d, 0xb5, 0x30, 0x86
 ]);
 
+// Define a default palette with 16 colors
+const defaultPalette = [
+    { r: 0, g: 0, b: 0, a: 255 },       // Black
+    { r: 255, g: 255, b: 255, a: 255 }, // White
+    { r: 255, g: 0, b: 0, a: 255 },     // Red
+    { r: 0, g: 255, b: 0, a: 255 },     // Green
+    { r: 0, g: 0, b: 255, a: 255 },     // Blue
+    { r: 255, g: 255, b: 0, a: 255 },   // Yellow
+    { r: 0, g: 255, b: 255, a: 255 },   // Cyan
+    { r: 255, g: 0, b: 255, a: 255 },   // Magenta
+    { r: 187, g: 187, b: 187, a: 255 }, // Silver (11*17)
+    { r: 136, g: 136, b: 136, a: 255 }, // Gray (8*17)
+    { r: 136, g: 0, b: 0, a: 255 },     // Maroon (8*17)
+    { r: 136, g: 136, b: 0, a: 255 },   // Olive (8*17)
+    { r: 0, g: 136, b: 0, a: 255 },     // Dark Green (8*17)
+    { r: 136, g: 0, b: 136, a: 255 },   // Purple (8*17)
+    { r: 0, g: 136, b: 136, a: 255 },   // Teal (8*17)
+    { r: 0, g: 0, b: 136, a: 255 }      // Navy (8*17)
+];
+
 document.getElementById('color-file').addEventListener('change', function(event) {
   handleFile(event, 'color');
 });
@@ -562,7 +582,7 @@ function displayColorPalette(palette) {
     updateColorIndicators();
 
     // Store the current palette
-    currentPalette = palette;
+    currentPalette = [...palette];
 
     attachPaletteEvents();
 }
@@ -610,7 +630,7 @@ function processColorImage(img) {
   storedPaletteIndices = updatePaletteIndices(imageData, quantizedColors);
 
   // Store the current palette
-  currentPalette = quantizedColors;
+  currentPalette = [...quantizedColors];
 
   // Apply the reduced palette and palette indices to the visible canvas
   applyPaletteToCanvas(storedPaletteIndices, quantizedColors);
@@ -908,7 +928,7 @@ function createMonoBMPData(monoPixelStates) {
  * - palette: an array of 16 {r, g, b, a} objects (the 16th is assumed transparent)
  * - pixelIndices: an array of width*height numbers (each 0–15)
  */
-function createGIFData(pixelIndices, palette) {
+function createColorGIFData(pixelIndices, palette) {
     const width = 32;
     const height = 32;
     let bytes = [];
@@ -964,6 +984,83 @@ function createGIFData(pixelIndices, palette) {
     // LZW Minimum Code Size – for 16 colors use 4.
     const lzwMinCodeSize = 4;
     bytes.push(lzwMinCodeSize);
+
+    // Use our "brute force" LZW encoder that outputs a clear code before each pixel.
+    const lzwData = lzwEncodeNoCompression(pixelIndices, lzwMinCodeSize);
+
+    // Package the LZW data into sub-blocks (each block is at most 255 bytes).
+    let offset = 0;
+    while (offset < lzwData.length) {
+        const blockSize = Math.min(255, lzwData.length - offset);
+        bytes.push(blockSize);
+        for (let i = 0; i < blockSize; i++) {
+            bytes.push(lzwData[offset + i]);
+        }
+        offset += blockSize;
+    }
+    // Block Terminator for image data.
+    bytes.push(0);
+
+    // --- GIF Trailer ---
+    bytes.push(0x3B);
+
+    // Create and return the Blob.
+    const byteArray = new Uint8Array(bytes);
+    return new Blob([byteArray], { type: "image/gif" });
+}
+
+function createMonoGIFData(monoPixelStates) {
+    const width = 32;
+    const height = 32;
+    let bytes = [];
+
+    // --- GIF Header ("GIF89a") ---
+    bytes.push(0x47, 0x49, 0x46, 0x38, 0x39, 0x61);
+
+    // --- Logical Screen Descriptor ---
+    // Width & Height in little-endian order.
+    bytes.push(width & 0xFF, (width >> 8) & 0xFF);
+    bytes.push(height & 0xFF, (height >> 8) & 0xFF);
+    // Packed Field:
+    //   Global Color Table Flag = 1 (bit 7)
+    //   Color Resolution = 7 (bits 4–6: meaning 8 bits per primary color)
+    //   Sort Flag = 0 (bit 3)
+    //   Size of Global Color Table = 3 (bits 0–2: 2^(3+1)=16 colors)
+    let packed = (1 << 7) | (7 << 4) | (3);
+    bytes.push(packed);
+    // Background Color Index (1) and Pixel Aspect Ratio (0)
+    bytes.push(1, 0);
+
+    // --- Global Color Table (16 entries, 3 bytes each) ---
+    // Alternating black and white colors
+    for (let i = 0; i < 16; i++) {
+        if (i % 2 === 0) {
+            bytes.push(0, 0, 0); // Black
+        } else {
+            bytes.push(255, 255, 255); // White
+        }
+    }
+
+    // --- Graphic Control Extension ---
+    bytes.push(0x21, 0xF9, 0x04, 0x00, 0, 0, 0, 0);
+
+    // --- Image Descriptor ---
+    bytes.push(0x2C); // Image Separator.
+    // Image Left and Top (0,0)
+    bytes.push(0, 0, 0, 0);
+    // Image Width & Height (little-endian)
+    bytes.push(width & 0xFF, (width >> 8) & 0xFF);
+    bytes.push(height & 0xFF, (height >> 8) & 0xFF);
+    // Packed Field: no local color table, not interlaced.
+    bytes.push(0);
+
+    // --- Image Data ---
+    // LZW Minimum Code Size – for 16 colors use 4.
+    const lzwMinCodeSize = 4;
+    bytes.push(lzwMinCodeSize);
+
+    // Map monoPixelStates to indices (0 for black, 1 for white)
+    const pixelIndices = monoPixelStates.map(isOn => isOn ? 0 : 1);
 
     // Use our "brute force" LZW encoder that outputs a clear code before each pixel.
     const lzwData = lzwEncodeNoCompression(pixelIndices, lzwMinCodeSize);
@@ -1067,9 +1164,12 @@ async function saveVMSVMI() {
         return;
     }
 
+    const monochromeOnly = document.getElementById('monochrome-only').checked;
     const vmsData = createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette);
     const vmiData = createVMIData(description);
-    const gifData = createGIFData(storedPaletteIndices, currentPalette);
+    const gifData = monochromeOnly ?
+        createMonoGIFData(monoPixelStates) :
+        createColorGIFData(storedPaletteIndices, currentPalette);
     const bmpData = createBMPData(storedPaletteIndices, currentPalette);
     const monoBMPData = createMonoBMPData(monoPixelStates);
 
@@ -1080,7 +1180,7 @@ async function saveVMSVMI() {
         // Add all files to the ZIP
         zip.file(`ICONDATA.VMS`, vmsData);
         zip.file(`ICONDATA.VMI`, vmiData);
-        zip.file(`color.bmp`, bmpData);
+        if (!monochromeOnly) zip.file(`color.bmp`, bmpData);
         zip.file(`mono.bmp`, monoBMPData);
         zip.file(`preview.gif`, gifData);
 
@@ -1117,8 +1217,8 @@ function createVMIData(description) {
 
   // Fill VMI data
   vmiData.set([0x41, 0x41, 0x47, 0x40], 0); // 0x00, 4 bytes
-  vmiData.set(new TextEncoder().encode('ICONDATA_GENERATOR').slice(0, 32), 4); // 0x04, 32 bytes
-  vmiData.set(new TextEncoder().encode('@robertdalesmith').slice(0, 32), 36); // 0x24, 32 bytes
+  vmiData.set(new TextEncoder().encode('VMU ICON MAKER').slice(0, 32), 4); // 0x04, 32 bytes
+  vmiData.set(new TextEncoder().encode('dcvmuicons.net').slice(0, 32), 36); // 0x24, 32 bytes
   vmiData.set([now.getFullYear() & 0xFF, (now.getFullYear() >> 8) & 0xFF], 68); // 0x44, 2 bytes
   vmiData.set([now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()], 70); // 0x46-0x4A, 5 bytes
   vmiData[75] = (now.getDay() + 1) % 7; // 0x4B, 1 byte
@@ -1130,6 +1230,7 @@ function createVMIData(description) {
 }
 
 function createVMSData(description, monoPixelStates, storedPaletteIndices, currentPalette) {
+    const includeColorIcon = !document.getElementById('monochrome-only').checked;
     const vmsData = new Uint8Array(1024);
 
     // 0x00, 16 bytes: Description
@@ -1137,19 +1238,21 @@ function createVMSData(description, monoPixelStates, storedPaletteIndices, curre
     vmsData.set(descriptionBytes, 0);
 
     // 0x10, 16 bytes: Fixed values
-    vmsData.set([0x20, 0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 16);
+    vmsData.set([0x20, 0x00, 0x00, 0x00, includeColorIcon ? 0xA0 : 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 16);
 
     // 0x20, 128 bytes: Mono bitmap data
     const monoBitmapBytes = convertMonoPixelStatesToBitmap(monoPixelStates);
     vmsData.set(monoBitmapBytes, 32);
 
     // 0xA0, 32 bytes: Color palette
-    const colorPaletteBytes = convertPaletteToBytes(currentPalette);
-    vmsData.set(colorPaletteBytes, 160);
+    if (includeColorIcon) {
+        const colorPaletteBytes = convertPaletteToBytes(currentPalette);
+        vmsData.set(colorPaletteBytes, 160);
 
-    // 0xC0, 512 bytes: Color bitmap data
-    const colorBitmapBytes = convertPaletteIndicesToBitmap(storedPaletteIndices);
-    vmsData.set(colorBitmapBytes, 192);
+        // 0xC0, 512 bytes: Color bitmap data
+        const colorBitmapBytes = convertPaletteIndicesToBitmap(storedPaletteIndices);
+        vmsData.set(colorBitmapBytes, 192);
+    }
 
     // 0x2C0: Add 3D mode sequence if enabled
     const threeDModeEnabled = document.getElementById('3d-mode-toggle').checked;
@@ -1277,7 +1380,7 @@ function parsePSVFile(psvData) {
     storedPaletteIndices = indices;
 
     // Render the canvas using your existing logic
-    currentPalette = palette;
+    currentPalette = [...palette];
     updateCanvasWithPalette(currentPalette);
     displayColorPalette(currentPalette);
 }
@@ -1533,7 +1636,12 @@ function parseVMSFile(vmsData) {
     if (isIconDataVMS) {
         console.log('Detected ICONDATA_VMS file');
         const colorIconOffset = (vmsData[20] | (vmsData[21] << 8) | (vmsData[22] << 16) | (vmsData[23] << 24));
-        parseIconData(vmsData, colorIconOffset);
+        const monoIconOffset = (vmsData[24] | (vmsData[25] << 8) | (vmsData[26] << 16) | (vmsData[27] << 24));
+
+        console.log('Color icon offset:', colorIconOffset, 'Mono icon offset:', monoIconOffset);
+
+        parseIconData(vmsData, colorIconOffset, monoIconOffset);
+        document.getElementById('monochrome-only').checked = (colorIconOffset === 0);
     } else {
         console.log('Detected game save file');
         parseSaveFileIcon(vmsData);
@@ -1612,27 +1720,36 @@ function updateMonoPixelStates(monoBitmapData) {
     updateMonoPaletteStates();
 }
 
-function parseIconData(data, offset) {
-    const paletteOffset = offset;
-    const bitmapOffset = offset + 32;
+function parseIconData(data, colorOffset, monoOffset) {
+    const paletteOffset = colorOffset;
+    const bitmapOffset = colorOffset + 32;
     const paletteSize = 32;
     const bitmapSize = 512;
 
-    if (data.length >= bitmapOffset + bitmapSize) {
-        const paletteData = data.slice(paletteOffset, paletteOffset + paletteSize);
-        const bitmapData = data.slice(bitmapOffset, bitmapOffset + bitmapSize);
-        const colorPalette = parseIconPalette(paletteData);
-        const colorImageData = convertBitmapToImageData(bitmapData, colorPalette);
-        drawImageDataToCanvas(colorImageData, 'color-canvas');
+    if (colorOffset !== 0) {
+        // Color icon data
+        if (data.length >= bitmapOffset + bitmapSize) {
+            const paletteData = data.slice(paletteOffset, paletteOffset + paletteSize);
+            const bitmapData = data.slice(bitmapOffset, bitmapOffset + bitmapSize);
+            const colorPalette = parseIconPalette(paletteData);
+            const colorImageData = convertBitmapToImageData(bitmapData, colorPalette);
+            drawImageDataToCanvas(colorImageData, 'color-canvas');
 
-        // Display the color palette
-        displayColorPalette(colorPalette);
+            // Display the color palette
+            displayColorPalette(colorPalette);
+        } else {
+            console.error('File is too short to contain icon data');
+        }
     } else {
-        console.error('File is too short to contain icon data');
+        // Set default color icon data
+        storedPaletteIndices = new Array(32 * 32).fill(1);
+        currentPalette = [...defaultPalette];
+        displayColorPalette(currentPalette);
+        updateCanvasWithPalette(currentPalette);
     }
 
     // Parse monochrome icon if present
-    const monoBitmapOffset = offset - 128; // Adjust based on actual format
+    const monoBitmapOffset = monoOffset + 32; // Adjust based on actual format
     const monoBitmapSize = 128; // 32x32 pixels, 1 bit per pixel
 
     if (data.length >= monoBitmapOffset + monoBitmapSize) {
@@ -1987,31 +2104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCanvas('color-canvas');
     setupCanvas('mono-canvas');
 
-    // Define a default palette with 16 colors
-    const defaultPalette = [
-        { r: 0, g: 0, b: 0, a: 255 },       // Black
-        { r: 255, g: 255, b: 255, a: 255 }, // White
-        { r: 255, g: 0, b: 0, a: 255 },     // Red
-        { r: 0, g: 255, b: 0, a: 255 },     // Green
-        { r: 0, g: 0, b: 255, a: 255 },     // Blue
-        { r: 255, g: 255, b: 0, a: 255 },   // Yellow
-        { r: 0, g: 255, b: 255, a: 255 },   // Cyan
-        { r: 255, g: 0, b: 255, a: 255 },   // Magenta
-        { r: 187, g: 187, b: 187, a: 255 }, // Silver (11*17)
-        { r: 136, g: 136, b: 136, a: 255 }, // Gray (8*17)
-        { r: 136, g: 0, b: 0, a: 255 },     // Maroon (8*17)
-        { r: 136, g: 136, b: 0, a: 255 },   // Olive (8*17)
-        { r: 0, g: 136, b: 0, a: 255 },     // Dark Green (8*17)
-        { r: 136, g: 0, b: 136, a: 255 },   // Purple (8*17)
-        { r: 0, g: 136, b: 136, a: 255 },   // Teal (8*17)
-        { r: 0, g: 0, b: 136, a: 255 }      // Navy (8*17)
-    ];
+    currentPalette = [...defaultPalette];
 
     // Render the default palette
-    displayColorPalette(defaultPalette);
+    displayColorPalette(currentPalette);
 
     // Initialize the canvas with the default palette
-    currentPalette = defaultPalette;
     updateCanvasWithPalette(currentPalette);
 
     document.getElementById('color-indicators').addEventListener('click', function() {
@@ -2555,6 +2653,7 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
         const transaction = db.transaction(['icons'], 'readwrite');
         const objectStore = transaction.objectStore('icons');
         const threeDModeEnabled = document.getElementById('3d-mode-toggle').checked;
+        const monochromeOnly = document.getElementById('monochrome-only').checked;
 
         const iconEntry = {
             description: description,
@@ -2564,6 +2663,7 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
             storedPaletteIndices: storedPaletteIndices,
             monoPixelStates: monoPixelStates,
             monoBMPData: monoBMPData, // Store the mono BMP data
+            monochromeOnly: monochromeOnly,
             threeDModeEnabled: threeDModeEnabled,
             timestamp: Date.now() // Add a timestamp when saving
         };
@@ -2579,7 +2679,7 @@ function saveIconToHistory(description, gifData, monoBMPData, zipData, currentPa
             const newHistoryItem = createHistoryItemElement(iconEntry, iconId);
             historyList.insertBefore(newHistoryItem, historyList.firstChild);
             const historyContainer = document.getElementById('history-container');
-            historyContainer.style.display = 'block';
+            historyContainer.style.display = 'flex';
         };
 
         request.onerror = function(event) {
@@ -2639,7 +2739,7 @@ function createHistoryItemElement(icon, iconId) {
     reopenButton.textContent = 'Load';
     reopenButton.onclick = () => reopenIconInEditor(icon);
 
-    iconDiv.appendChild(gifImg);
+    if (!icon.monochromeOnly) iconDiv.appendChild(gifImg);
     if (icon.monoBMPData) iconDiv.appendChild(monoImg);
     const iconDescDiv = document.createElement('div');
     iconDescDiv.className = 'history-item-desc';
@@ -2679,7 +2779,7 @@ function renderIconHistory() {
 
                 // Check if there are any icons to display
                 if (icons.length > 0) {
-                    historyContainer.style.display = 'block'; // Show the container
+                    historyContainer.style.display = 'flex'; // Show the container
                 } else {
                     historyContainer.style.display = 'none'; // Hide the container
                 }
@@ -2754,6 +2854,9 @@ function reopenIconInEditor(icon) {
 
     // Restore the 3D mode state
     document.getElementById('3d-mode-toggle').checked = icon.threeDModeEnabled;
+
+    // Restore the monochrome only state
+    document.getElementById('monochrome-only').checked = icon.monochromeOnly;
 
     // Update the description field
     document.getElementById('description').value = icon.description;

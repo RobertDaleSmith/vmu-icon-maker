@@ -29,7 +29,7 @@
         </div>
         <div id="color-area">
             <div class="inline-container">
-                <h3>Color Icon</h3>
+                <h3>Color</h3>
                 <label for="color-file" class="option-button">+ Image</label>
                 <input type="file" id="color-file" accept=".ico, .bmp, .png, .jpeg, .jpg, .gif, .webp">
             </div>
@@ -65,7 +65,7 @@
         </div>
         <div id="mono-area">
             <div class="inline-container">
-                <h3>Mono Icon</h3>
+                <h3>Monochrome</h3>
                 <label id="clear-mono-button" class="option-button">Clear</label>
                 <label id="invert-mono-button" class="option-button">Invert</label>
                 <label for="mono-file" class="option-button">+ Image</label>
@@ -102,6 +102,13 @@
             <div class="option-container">
                 <label for="description" class="option-label">Description</label>
                 <input type="text" id="description" maxlength="16" placeholder="Description" value="ICONDATA_VMS">
+            </div>
+            <div class="option-container">
+                <input type="checkbox" id="monochrome-only" />
+                <label for="monochrome-only">Save Monochrome Icon Only</label>
+                <div class="tooltip">
+                    Color icon is optional.
+                </div>
             </div>
             <div class="option-container">
                 <input type="checkbox" id="3d-mode-toggle" />
