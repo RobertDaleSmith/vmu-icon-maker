@@ -1221,7 +1221,7 @@ function createVMIData(description) {
   vmiData.set(new TextEncoder().encode('dcvmuicons.net').slice(0, 32), 36); // 0x24, 32 bytes
   vmiData.set([now.getFullYear() & 0xFF, (now.getFullYear() >> 8) & 0xFF], 68); // 0x44, 2 bytes
   vmiData.set([now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()], 70); // 0x46-0x4A, 5 bytes
-  vmiData[75] = (now.getDay() + 1) % 7; // 0x4B, 1 byte
+  vmiData[75] = now.getDay(); // 0x4B, 1 byte - Sunday=0 through Saturday=6
   vmiData.set([0x00, 0x01, 0x01, 0x00], 76); // 0x4C-0x4F, 4 bytes
   vmiData.set(new TextEncoder().encode('ICONDATAICONDATA_VMS').slice(0, 20), 80); // 0x50, 20 bytes
   vmiData.set([0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00], 100); // 0x64-0x6B, 8 bytes
