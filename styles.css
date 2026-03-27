@@ -53,6 +53,45 @@ body {
   line-height: 26px;
 }
 
+#performance-toggle {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 100;
+  opacity: 0.25;
+  transition: opacity 0.3s;
+  font-size: 18px;
+  line-height: 32px;
+  text-align: center;
+  text-shadow: none;
+}
+
+#performance-toggle::after {
+  content: '\1F441';
+}
+
+#performance-toggle:hover {
+  opacity: 0.8;
+}
+
+#performance-toggle.paused::after {
+  content: '\1F441';
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+#performance-toggle.paused {
+  opacity: 0.35;
+}
+
+#performance-toggle.paused:hover {
+  opacity: 0.8;
+}
+
 #clock {
   font-size: 22px;
   letter-spacing: 4px;
